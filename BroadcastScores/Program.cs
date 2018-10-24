@@ -7,6 +7,7 @@ using System.Net.Http;
 using System.IO;
 using System.Xml;
 using System.Net;
+using NLog;
 
 using Miomni.SportsKit;
 using Miomni.EventLib.Cache;
@@ -28,15 +29,22 @@ namespace BroadcastScores
 
         static void Main(string[] args)
         {
-            PushGamesSignalRFeeds pushObj = new PushGamesSignalRFeeds();
+            ProcessGameScores().Wait();
+        }
 
+        private static async Task ProcessGameScores()
+        {
+            PushGamesSignalRFeeds pushObj = new PushGamesSignalRFeeds();
 
             string[] ScorePullUrls;
             ScorePullUrls = PushGamesSignalRFeeds.SRScorePullUrlList.Split(',');
+
+            var tasks = new List<Task>();
             foreach (string pullUrl in ScorePullUrls)
             {
-                pushObj.GenerateCollegeScoresFeeds(pullUrl).Wait();
+                tasks.Add(pushObj.GenerateScoresFeeds(pullUrl));
             }
+            await Task.WhenAll(tasks);
             Console.Read();
         }
 

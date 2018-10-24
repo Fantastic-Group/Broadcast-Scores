@@ -57,7 +57,7 @@ namespace BroadcastScores
 
         }
 
-        public async Task GenerateCollegeScoresFeeds(string urlScorePull)
+        public async Task GenerateScoresFeeds(string urlScorePull)
         {
             try
             {
@@ -101,7 +101,8 @@ namespace BroadcastScores
                     {
                         Console.WriteLine(e.Message);
                     }
-                    client.OpenReadAsync(new Uri(urlScorePull));
+                    await client.OpenReadTaskAsync(urlScorePull);
+                    //client.OpenReadAsync(new Uri(urlScorePull));
                     System.Threading.Thread.Sleep(5000);
                 }
 
