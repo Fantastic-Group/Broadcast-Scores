@@ -57,7 +57,7 @@ namespace BroadcastScores
 
         }
 
-        public async Task GenerateCollegeScoresFiles(string urlScorePull)
+        public async Task GenerateCollegeScoresFeeds(string urlScorePull)
         {
             try
             {

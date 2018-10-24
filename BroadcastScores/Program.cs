@@ -35,7 +35,7 @@ namespace BroadcastScores
             ScorePullUrls = PushGamesSignalRFeeds.SRScorePullUrlList.Split(',');
             foreach (string pullUrl in ScorePullUrls)
             {
-                pushObj.GenerateCollegeScoresFiles(pullUrl).Wait();
+                pushObj.GenerateCollegeScoresFeeds(pullUrl).Wait();
             }
             Console.Read();
         }
