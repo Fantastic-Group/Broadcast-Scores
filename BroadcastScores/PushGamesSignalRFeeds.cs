@@ -112,7 +112,7 @@ namespace BroadcastScores
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.Message);
+                Console.WriteLine($"{ex.GetType().Name} thrown when converting BR scores: {ex.Message}");
                 logger.Error(ex, $"{ex.GetType().Name} thrown when converting BR scores: {ex.Message}");
             }
 
@@ -169,13 +169,13 @@ namespace BroadcastScores
                         away_score = Convert.ToInt32(nodeEventStatus?.Attributes["away_score"]?.Value);
                     }
 
-                    if(periodList.Count == 0 )
-                    periodList.Add(new Period
-                    {
-                        Name = Convert.ToString(1),
-                        Home = home_score,
-                        Visitor = away_score
-                    });
+                    if (periodList.Count == 0)
+                        periodList.Add(new Period
+                        {
+                            Name = Convert.ToString(1),
+                            Home = home_score,
+                            Visitor = away_score
+                        });
 
 
                     string gameStatus = nodeEventStatus.Attributes["match_status"].Value;
@@ -184,7 +184,7 @@ namespace BroadcastScores
                                                                 : CapitalizeFirstLetter(gameStatus.Replace("_", " "));
 
 
-                    
+
                     var scoreMsg = new EventMessage
                     {
                         Parent = null,
@@ -209,9 +209,9 @@ namespace BroadcastScores
                     return scoreMsg;
                 }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
-                Console.WriteLine(ex.Message);
+                Console.WriteLine($"{ex.GetType().Name} thrown when creating Gamefeed object: {ex.Message}");
                 logger.Error(ex, $"{ex.GetType().Name} thrown when creating Gamefeed object: {ex.Message}");
             }
             return null;
@@ -219,72 +219,80 @@ namespace BroadcastScores
 
         public EventMessage CreateTennisScoreMessage(string XMLScorefeed)
         {
-            XmlDocument doc = new XmlDocument();
-            doc.InnerXml = XMLScorefeed;
-
-            XmlNode nodeFeedMeta = doc.GetElementsByTagName("metadata").Item(0);
-            string matchID = nodeFeedMeta.Attributes["sport_event_id"].Value;
-            matchID = matchID.Replace("sr:match:", "");
-            string[] matchIDs = { matchID };
-            var matchEventsTask = new EGSqlQuery(SqlUrl).MatchIDsToEventAsync(matchIDs);
-
-            // Got those EventIDs yet?
-            if (!matchEventsTask.IsCompleted)
-                matchEventsTask.Wait();
-
-            if (matchEventsTask.Result != null && matchEventsTask.Result.ContainsKey(Convert.ToInt32(matchID)))
+            try
             {
-                int eventID = matchEventsTask.Result[Convert.ToInt32(matchID)];
+                XmlDocument doc = new XmlDocument();
+                doc.InnerXml = XMLScorefeed;
 
-                XmlNode nodeGameState = doc.GetElementsByTagName("game_state").Item(0);
-                XmlNode nodeEventStatus = doc.GetElementsByTagName("sport_event_status").Item(0);
+                XmlNode nodeFeedMeta = doc.GetElementsByTagName("metadata").Item(0);
+                string matchID = nodeFeedMeta.Attributes["sport_event_id"].Value;
+                matchID = matchID.Replace("sr:match:", "");
+                string[] matchIDs = { matchID };
+                var matchEventsTask = new EGSqlQuery(SqlUrl).MatchIDsToEventAsync(matchIDs);
 
-                List<Period> periodList = new List<Period>();
-                if (nodeEventStatus.HasChildNodes)
-                    foreach (XmlNode x in nodeEventStatus.ChildNodes[0])
-                    {
-                        periodList.Add(new Period
-                        {
-                            Name = x.Attributes["number"].Value,
-                            Home = Convert.ToInt32(x.Attributes["home_score"].Value),
-                            Visitor = Convert.ToInt32(x.Attributes["away_score"].Value),
-                        });
-                    }
+                // Got those EventIDs yet?
+                if (!matchEventsTask.IsCompleted)
+                    matchEventsTask.Wait();
 
-
-
-                string gameStatus = nodeEventStatus.Attributes["match_status"].Value;
-                gameStatus = ToSRScoreStatus.ContainsKey(gameStatus)
-                                                            ? ToSRScoreStatus[gameStatus]
-                                                            : CapitalizeFirstLetter(gameStatus.Replace("_", " "));
-
-
-
-                var scoreMsg = new EventMessage
+                if (matchEventsTask.Result != null && matchEventsTask.Result.ContainsKey(Convert.ToInt32(matchID)))
                 {
-                    Parent = null,
-                    Collected = DateTime.UtcNow,
-                    Dirty = true,
-                    Watch = System.Diagnostics.Stopwatch.StartNew(),
-                    Value = new EventStatusResponse
-                    {
-                        MiomniEventID = $"E-{eventID}",
-                        Status = ResponseStatus.OpSuccess,
-                        Score = new Score
+                    int eventID = matchEventsTask.Result[Convert.ToInt32(matchID)];
+
+                    XmlNode nodeGameState = doc.GetElementsByTagName("game_state").Item(0);
+                    XmlNode nodeEventStatus = doc.GetElementsByTagName("sport_event_status").Item(0);
+
+                    List<Period> periodList = new List<Period>();
+                    if (nodeEventStatus.HasChildNodes)
+                        foreach (XmlNode x in nodeEventStatus.ChildNodes[0])
                         {
-                            CurrentPeriod = gameStatus,
-                            OrdinalPeriod = Convert.ToInt32(nodeEventStatus.Attributes["period"].Value),
-                            Time = null,
-                            Home = null,
-                            Visitor = null,
-                            Periods = periodList,
-                            HomeAlt = nodeGameState.Attributes["home_score"].Value, // Tennis - Overall Home Score
-                            VisitorAlt = nodeGameState.Attributes["away_score"].Value, // Tennis Overall Away Score
-                            DisplayText1 = nodeGameState.Attributes["serving"].Value //Serving Person
+                            periodList.Add(new Period
+                            {
+                                Name = x.Attributes["number"].Value,
+                                Home = Convert.ToInt32(x.Attributes["home_score"].Value),
+                                Visitor = Convert.ToInt32(x.Attributes["away_score"].Value),
+                            });
                         }
-                    }
-                };
-                return scoreMsg;
+
+
+
+                    string gameStatus = nodeEventStatus.Attributes["match_status"].Value;
+                    gameStatus = ToSRScoreStatus.ContainsKey(gameStatus)
+                                                                ? ToSRScoreStatus[gameStatus]
+                                                                : CapitalizeFirstLetter(gameStatus.Replace("_", " "));
+
+
+
+                    var scoreMsg = new EventMessage
+                    {
+                        Parent = null,
+                        Collected = DateTime.UtcNow,
+                        Dirty = true,
+                        Watch = System.Diagnostics.Stopwatch.StartNew(),
+                        Value = new EventStatusResponse
+                        {
+                            MiomniEventID = $"E-{eventID}",
+                            Status = ResponseStatus.OpSuccess,
+                            Score = new Score
+                            {
+                                CurrentPeriod = gameStatus,
+                                OrdinalPeriod = Convert.ToInt32(nodeEventStatus.Attributes["period"].Value),
+                                Time = null,
+                                Home = null,
+                                Visitor = null,
+                                Periods = periodList,
+                                HomeAlt = nodeGameState.Attributes["home_score"].Value, // Tennis - Overall Home Score
+                                VisitorAlt = nodeGameState.Attributes["away_score"].Value, // Tennis Overall Away Score
+                                DisplayText1 = nodeGameState.Attributes["serving"].Value //Serving Person
+                            }
+                        }
+                    };
+                    return scoreMsg;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"{ex.GetType().Name} thrown when creating Tennis Gamefeed object: {ex.Message}");
+                logger.Error(ex, $"{ex.GetType().Name} thrown when creating Tennis Gamefeed object: {ex.Message}");
             }
             return null;
         }
@@ -322,6 +330,7 @@ namespace BroadcastScores
                 connection.ConnectionSlow += Connection_ConnectionSlow;
                 connection.Closed += Connection_Closed;
                 IHubProxy proxy = connection.CreateHubProxy(hub);
+
                 connection.Start().Wait();
 
                 string serialised = JsonConvert.SerializeObject(msg.Value);
@@ -330,11 +339,10 @@ namespace BroadcastScores
                 var task = proxy.Invoke(method, authHash, msg.Value);
                 task.Wait();
                 Console.WriteLine("Message Sent");
-                connection.Stop();
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.Message);
+                Console.WriteLine($"{ex.GetType().Name} thrown when sending SignalR feed to Hub: {ex.Message}");
                 logger.Error(ex, $"{ex.GetType().Name} thrown when sending SignalR feed to Hub: {ex.Message}");
             }
 

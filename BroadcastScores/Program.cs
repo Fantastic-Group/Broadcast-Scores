@@ -45,11 +45,13 @@ namespace BroadcastScores
                 ScorePullUrls = PushGamesSignalRFeeds.SRScorePullUrlList.Split(',');
 
                 var tasks = new List<Task>();
+                int i = 1;
                 foreach (string pullUrl in ScorePullUrls)
                 {
                     tasks.Add(pushObj.GenerateScoresFeeds(pullUrl.Trim()));
-                    Console.WriteLine("Score feeds started for : " + pullUrl);
-                    logger.Info("Score feeds started for : " + pullUrl);
+                    Console.WriteLine(i + "): Score feeds started for : " + pullUrl);
+                    logger.Info(i + "): Score feeds started for : " + pullUrl);
+                    i++;
                 }
                 await Task.WhenAll(tasks);
             }
