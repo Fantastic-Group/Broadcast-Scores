@@ -26,6 +26,7 @@ namespace BroadcastScores
         public static string SqlUrl { get; set; }
         public static string SRGamePushURL { get; set; }
         public static string Scorefilepath { get; set; }
+        static Logger logger = LogManager.GetCurrentClassLogger();
 
         static void Main(string[] args)
         {
@@ -34,18 +35,28 @@ namespace BroadcastScores
 
         private static async Task ProcessGameScores()
         {
-            PushGamesSignalRFeeds pushObj = new PushGamesSignalRFeeds();
-
-            string[] ScorePullUrls;
-            ScorePullUrls = PushGamesSignalRFeeds.SRScorePullUrlList.Split(',');
-
-            var tasks = new List<Task>();
-            foreach (string pullUrl in ScorePullUrls)
+            try
             {
-                tasks.Add(pushObj.GenerateScoresFeeds(pullUrl));
+                Console.WriteLine("Scores feeds processing started...");
+                logger.Info("Scores feeds processing started...");
+                PushGamesSignalRFeeds pushObj = new PushGamesSignalRFeeds();
+
+                string[] ScorePullUrls;
+                ScorePullUrls = PushGamesSignalRFeeds.SRScorePullUrlList.Split(',');
+
+                var tasks = new List<Task>();
+                foreach (string pullUrl in ScorePullUrls)
+                {
+                    tasks.Add(pushObj.GenerateScoresFeeds(pullUrl.Trim()));
+                    Console.WriteLine("Score feeds started for : " + pullUrl);
+                    logger.Info("Score feeds started for : " + pullUrl);
+                }
+                await Task.WhenAll(tasks);
             }
-            await Task.WhenAll(tasks);
-            Console.Read();
+            catch(Exception ex)
+            {
+                logger.Error(ex, $"{ex.GetType().Name} thrown when running ProcessGameScores : {ex.Message}");
+            }
         }
 
     }

@@ -11,6 +11,7 @@ using System.Configuration;
 using Microsoft.AspNet.SignalR;
 using Microsoft.AspNet.SignalR.Client;
 using Newtonsoft.Json;
+using NLog;
 
 
 using Miomni.SportsKit;
@@ -32,6 +33,7 @@ namespace BroadcastScores
         public static string SRScorePullUrlList { get; set; }
         public static string SendSignalR { get; set; }
         public static string hubUrl, salt, hub, method;
+        static Logger logger = LogManager.GetCurrentClassLogger();
 
         public PushGamesSignalRFeeds()
         {
@@ -100,6 +102,7 @@ namespace BroadcastScores
                     catch (Exception e)
                     {
                         Console.WriteLine(e.Message);
+                        logger.Error(e, $"{e.GetType().Name}  Webclient feeds pulling: {e.Message}");
                     }
                     await client.OpenReadTaskAsync(urlScorePull);
                     //client.OpenReadAsync(new Uri(urlScorePull));
@@ -110,7 +113,7 @@ namespace BroadcastScores
             catch (Exception ex)
             {
                 Console.WriteLine(ex.Message);
-                Console.ReadLine();
+                logger.Error(ex, $"{ex.GetType().Name} thrown when converting BR scores: {ex.Message}");
             }
 
             //GenerateCollegeScoresFiles();
@@ -209,6 +212,7 @@ namespace BroadcastScores
             catch(Exception ex)
             {
                 Console.WriteLine(ex.Message);
+                logger.Error(ex, $"{ex.GetType().Name} thrown when creating Gamefeed object: {ex.Message}");
             }
             return null;
         }
@@ -296,8 +300,8 @@ namespace BroadcastScores
         {
             { "1st_half", "First Half" },
             { "2nd_half", "Second Half" },
-            { "1st_set", "First Half" },
-            { "2nd_set", "Second Half" },
+            { "1st_set", "First Set" },
+            { "2nd_set", "Second Set" },
             { "3rd_set" , "Third Set" },
             { "4th_set" , "Fourth Set" },
             { "5th_set" , "Fifth Set" },
@@ -326,10 +330,12 @@ namespace BroadcastScores
                 var task = proxy.Invoke(method, authHash, msg.Value);
                 task.Wait();
                 Console.WriteLine("Message Sent");
+                connection.Stop();
             }
             catch (Exception ex)
             {
                 Console.WriteLine(ex.Message);
+                logger.Error(ex, $"{ex.GetType().Name} thrown when sending SignalR feed to Hub: {ex.Message}");
             }
 
         }
@@ -347,6 +353,7 @@ namespace BroadcastScores
         private void Connection_Error(Exception obj)
         {
             Console.WriteLine($"{obj.GetType().Name} thrown on SignalR connection: {obj.Message}");
+            logger.Error($"{obj.GetType().Name} thrown on SignalR connection: {obj.Message}");
         }
 
     }
