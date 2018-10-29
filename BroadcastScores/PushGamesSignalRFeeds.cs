@@ -34,6 +34,7 @@ namespace BroadcastScores
         public static string SendSignalR { get; set; }
         public static string hubUrl, salt, hub, method;
         static Logger logger = LogManager.GetCurrentClassLogger();
+        NFL objNFL = new NFL();
 
         public PushGamesSignalRFeeds()
         {
@@ -75,11 +76,16 @@ namespace BroadcastScores
                                 while (!reader.EndOfStream)
                                 {
                                     string data = reader.ReadLine().Trim();
-                                    if (data.StartsWith("<root"))
+                                    EventMessage msgScore = new EventMessage();
+                                    if (urlScorePull.ToUpper().Contains("NFL"))
+                                    {
+                                        if(!String.IsNullOrEmpty(data))
+                                            msgScore = objNFL.CreateNFLScoreMessage(data);
+                                    }
+                                    else if (data.StartsWith("<root"))
                                     {
                                         if (!String.IsNullOrEmpty(data))
                                         {
-                                            EventMessage msgScore = new EventMessage();
                                             if (urlScorePull.ToUpper().Contains("TENNIS"))
                                             {
                                                 msgScore = CreateTennisScoreMessage(data);
@@ -88,12 +94,13 @@ namespace BroadcastScores
                                             {
                                                 msgScore = CreateGamesScoreMessage(data);
                                             }
-                                            if (msgScore != null)
-                                            {
-                                                SendSignalRFeedtohub(msgScore);
-                                            }
-
                                         }
+                                    }
+
+
+                                    if (msgScore != null)
+                                    {
+                                        SendSignalRFeedtohub(msgScore);
                                     }
                                 }
                             }
@@ -297,7 +304,7 @@ namespace BroadcastScores
             return null;
         }
 
-        public string CapitalizeFirstLetter(string s)
+        public static string CapitalizeFirstLetter(string s)
         {
             if (String.IsNullOrEmpty(s)) return s;
             if (s.Length == 1) return s.ToUpper();
