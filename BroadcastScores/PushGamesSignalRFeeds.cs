@@ -81,6 +81,11 @@ namespace BroadcastScores
                                     {
                                         if(!String.IsNullOrEmpty(data))
                                             msgScore = objNFL.CreateNFLScoreMessage(data);
+
+                                        if (msgScore != null)
+                                        {
+                                            SendSignalRFeedtohub(msgScore);
+                                        }
                                     }
                                     else if (data.StartsWith("<root"))
                                     {
@@ -95,13 +100,14 @@ namespace BroadcastScores
                                                 msgScore = CreateGamesScoreMessage(data);
                                             }
                                         }
+                                        if (msgScore != null)
+                                        {
+                                            SendSignalRFeedtohub(msgScore);
+                                        }
                                     }
 
 
-                                    if (msgScore != null)
-                                    {
-                                        SendSignalRFeedtohub(msgScore);
-                                    }
+
                                 }
                             }
                         };
