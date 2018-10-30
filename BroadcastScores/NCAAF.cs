@@ -34,8 +34,8 @@ namespace BroadcastScores
         string NCAAFBScoreAPI { get; set; }
         string NCAAFBTeamsAPI { get; set; }
         string NCAAFLookupDir { get; set; }
-        static List<Game> GamesScheduleList = new List<Game>();
-        static List<Game> todaysGames = new List<Game>();
+        static List<NCAAFGame> GamesScheduleList = new List<NCAAFGame>();
+        static List<NCAAFGame> todaysGames = new List<NCAAFGame>();
         static Dictionary<String, string> TeamNameList = new Dictionary<string, string>();
 
 
@@ -93,12 +93,12 @@ namespace BroadcastScores
 
         public void GetTodaysGames()
         {
-            foreach (Game game in GamesScheduleList)
+            foreach (NCAAFGame game in GamesScheduleList)
             {
                    if ((game.GameDate.Contains(DateTime.UtcNow.ToString("yyyy-MM-dd") + "T")))
                     {
                         todaysGames.Add(
-                            new Game
+                            new NCAAFGame
                             {
                                 Home = game.Home,
                                 Away = game.Away,
@@ -115,7 +115,7 @@ namespace BroadcastScores
         {
             XmlDocument doc = new XmlDocument();
 
-            foreach (Game gameDetails in todaysGames)
+            foreach (NCAAFGame gameDetails in todaysGames)
             {
                 NCAAFBScoreAPI = NCAAFBScoreAPI.Replace("{year}", DateTime.UtcNow.Year.ToString());
                 NCAAFBScoreAPI = NCAAFBScoreAPI.Replace("{week}", gameDetails.Week);
@@ -230,7 +230,7 @@ namespace BroadcastScores
                     if (gameStatus.ToUpper() != "CLOSED")
                     {
                         GamesScheduleList.Add(
-                            new Game
+                            new NCAAFGame
                             {
                                 Home = xmlGame.Attributes["home"].Value,
                                 Away = xmlGame.Attributes["away"].Value,
@@ -266,7 +266,7 @@ namespace BroadcastScores
 
     }
 
-    class Game
+    class NCAAFGame
     {
         public string Home { get; set; }
         public string Away { get; set; }

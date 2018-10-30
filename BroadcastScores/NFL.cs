@@ -29,10 +29,7 @@ namespace BroadcastScores
     {
         static Logger logger = LogManager.GetCurrentClassLogger();
         public static string SqlUrl { get; set; }
-        //public static string NFLScoresFolder { get; set; }
         public List<NFLGameScoreHistory> listNFlGameScoreHistory = new List<NFLGameScoreHistory>();
-        //static string NFLGameXml = "<game id={gameID}><q1 home=h1 away=a1></q1><q2 home=h1 away=a2></q2><q3 home=h3 away=a3></q3><q4 home=h4 away=a4></q4></game>";
-        //static string NFLGameJson = "{q1home=0, q1away=0 , q2home=0 , q2away=0 , q3home=0, q3away=0, q4home=0, q4away=0}";
 
         public NFL()
         {

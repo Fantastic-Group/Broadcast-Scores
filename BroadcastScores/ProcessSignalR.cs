@@ -21,6 +21,7 @@ namespace BroadcastScores
         public static string SendSignalR { get; set; }
         public static string hubUrl, salt, hub, method;
         static Logger logger = LogManager.GetCurrentClassLogger();
+        static ScoreFeedsToDisk objFeedsToDisk = new ScoreFeedsToDisk();
 
         public ProcessSignalR()
         {
@@ -53,6 +54,7 @@ namespace BroadcastScores
                 string authHash = $"{serialised}{salt}".ToSHA256();
 
                 var task = proxy.Invoke(method, authHash, msg.Value);
+                objFeedsToDisk.WritefeedToDisk(msg);
                 task.Wait();
                 Console.WriteLine("Message Sent");
             }

@@ -128,7 +128,6 @@ namespace BroadcastScores
                             logger.Error(e, $"{e.GetType().Name}  Webclient feeds pulling: {e.Message}");
                         }
                         await client.OpenReadTaskAsync(urlScorePull);
-                        //client.OpenReadAsync(new Uri(urlScorePull));
                         System.Threading.Thread.Sleep(5000);
                     }
                 }
