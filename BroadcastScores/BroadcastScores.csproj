@@ -73,6 +73,7 @@
   <ItemGroup>
     <Compile Include="EGSql.cs" />
     <Compile Include="NCAAF.cs" />
+    <Compile Include="ProcessSignalR.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="NFL.cs" />

@@ -73,14 +73,6 @@ namespace BroadcastScores
                     home_score = Convert.ToInt32(objNFLScore.payload.score.home);
                     away_score = Convert.ToInt32(objNFLScore.payload.score.away);
 
-                    if (periodList.Count == 0)
-                        periodList.Add(new Period
-                        {
-                            Name = Convert.ToString(1),
-                            Home = home_score,
-                            Visitor = away_score
-                        });
-
                     int ordinalPeriod;
                     if (objNFLScore.payload.phase.Any(c => char.IsDigit(c)))
                     {
@@ -138,6 +130,31 @@ namespace BroadcastScores
                         }
                     }
                     // End : NFL Period Score History
+                    var objScore = listNFlGameScoreHistory.FirstOrDefault(x => x.eventID == eventID);
+                    if(ordinalPeriod == 1)
+                    {
+                        periodList.Add(new Period
+                        {
+                            Name = Convert.ToString(1), Home = home_score, Visitor = away_score });
+                    }
+                    else if (ordinalPeriod == 2)
+                    {
+                        periodList.Add(new Period { Name = Convert.ToString(1),Home = objScore.q1home,Visitor = objScore.q1away });
+                        periodList.Add(new Period { Name = Convert.ToString(2), Home = objScore.q2home, Visitor = objScore.q2away });
+                    }
+                    else if (ordinalPeriod == 3)
+                    {
+                        periodList.Add(new Period { Name = Convert.ToString(1), Home = objScore.q1home, Visitor = objScore.q1away });
+                        periodList.Add(new Period { Name = Convert.ToString(2), Home = objScore.q2home, Visitor = objScore.q2away });
+                        periodList.Add(new Period { Name = Convert.ToString(3), Home = objScore.q3home, Visitor = objScore.q3away });
+                    }
+                    else if (ordinalPeriod == 4)
+                    {
+                        periodList.Add(new Period { Name = Convert.ToString(1), Home = objScore.q1home, Visitor = objScore.q1away });
+                        periodList.Add(new Period { Name = Convert.ToString(2), Home = objScore.q2home, Visitor = objScore.q2away });
+                        periodList.Add(new Period { Name = Convert.ToString(3), Home = objScore.q3home, Visitor = objScore.q3away });
+                        periodList.Add(new Period { Name = Convert.ToString(4), Home = objScore.q4home, Visitor = objScore.q4away });
+                    }
 
                     var scoreMsg = new EventMessage
                     {

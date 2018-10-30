@@ -34,7 +34,9 @@ namespace BroadcastScores
         public static string SendSignalR { get; set; }
         public static string hubUrl, salt, hub, method;
         static Logger logger = LogManager.GetCurrentClassLogger();
+        ProcessSignalR objProcessSignalR = new ProcessSignalR();
         NFL objNFL = new NFL();
+
 
         public PushGamesSignalRFeeds()
         {
@@ -64,62 +66,71 @@ namespace BroadcastScores
         {
             try
             {
-                var client = new WebClient();
-                while (true)
+                //For NCAAF API
+                if (urlScorePull.ToUpper().Contains("NCAAF"))
                 {
-                    try
+                    NCAAF objNCAAF = new NCAAF(urlScorePull);
+                    objNCAAF.BuildNCAAFScores();
+                }
+                else // For all Push feeds
+                {
+                    var client = new WebClient();
+                    while (true)
                     {
-                        client.OpenReadCompleted += (sender, args) =>
+                        try
                         {
-                            using (var reader = new StreamReader(args.Result))
+                            client.OpenReadCompleted += (sender, args) =>
                             {
-                                while (!reader.EndOfStream)
+                                using (var reader = new StreamReader(args.Result))
                                 {
-                                    string data = reader.ReadLine().Trim();
-                                    EventMessage msgScore = new EventMessage();
-                                    if (urlScorePull.ToUpper().Contains("NFL"))
+                                    while (!reader.EndOfStream)
                                     {
-                                        if(!String.IsNullOrEmpty(data))
-                                            msgScore = objNFL.CreateNFLScoreMessage(data);
+                                        string data = reader.ReadLine().Trim();
+                                        EventMessage msgScore = new EventMessage();
+                                        if (urlScorePull.ToUpper().Contains("NFL"))
+                                        {
+                                            if (!String.IsNullOrEmpty(data))
+                                                msgScore = objNFL.CreateNFLScoreMessage(data);
 
-                                        if (msgScore != null)
-                                        {
-                                            SendSignalRFeedtohub(msgScore);
-                                        }
-                                    }
-                                    else if (data.StartsWith("<root"))
-                                    {
-                                        if (!String.IsNullOrEmpty(data))
-                                        {
-                                            if (urlScorePull.ToUpper().Contains("TENNIS"))
+                                            if (msgScore != null)
                                             {
-                                                msgScore = CreateTennisScoreMessage(data);
-                                            }
-                                            else
-                                            {
-                                                msgScore = CreateGamesScoreMessage(data);
+                                                objProcessSignalR.SendSignalRFeedtohub(msgScore);
                                             }
                                         }
-                                        if (msgScore != null)
+                                        else if (data.StartsWith("<root"))
                                         {
-                                            SendSignalRFeedtohub(msgScore);
+                                            if (!String.IsNullOrEmpty(data))
+                                            {
+                                                if (urlScorePull.ToUpper().Contains("TENNIS"))
+                                                {
+                                                    msgScore = CreateTennisScoreMessage(data);
+                                                }
+                                                else
+                                                {
+                                                    msgScore = CreateGamesScoreMessage(data);
+                                                }
+                                            }
+                                            if (msgScore != null)
+                                            {
+                                                objProcessSignalR.SendSignalRFeedtohub(msgScore);
+                                            }
                                         }
+
+
+
                                     }
-
-
-
                                 }
-                            }
-                        };
+                            };
+                        }
+                        catch (IOException e)
+                        {
+                            Console.WriteLine(e.Message);
+                            logger.Error(e, $"{e.GetType().Name}  Webclient feeds pulling: {e.Message}");
+                        }
+                        await client.OpenReadTaskAsync(urlScorePull);
+                        //client.OpenReadAsync(new Uri(urlScorePull));
+                        System.Threading.Thread.Sleep(5000);
                     }
-                    catch (Exception e)
-                    {
-                        Console.WriteLine(e.Message);
-                        logger.Error(e, $"{e.GetType().Name}  Webclient feeds pulling: {e.Message}");
-                    }
-                    await client.OpenReadTaskAsync(urlScorePull);
-                    //client.OpenReadAsync(new Uri(urlScorePull));
-                    System.Threading.Thread.Sleep(5000);
                 }
 
             }
@@ -334,48 +345,7 @@ namespace BroadcastScores
             { "halftime" , "Halftime pause" },
         };
 
-        public void SendSignalRFeedtohub(EventMessage msg)
-        {
-            try
-            {
-                HubConnection connection = new HubConnection(hubUrl);
-                connection.Error += Connection_Error;
-                connection.ConnectionSlow += Connection_ConnectionSlow;
-                connection.Closed += Connection_Closed;
-                IHubProxy proxy = connection.CreateHubProxy(hub);
-
-                connection.Start().Wait();
-
-                string serialised = JsonConvert.SerializeObject(msg.Value);
-                string authHash = $"{serialised}{salt}".ToSHA256();
-
-                var task = proxy.Invoke(method, authHash, msg.Value);
-                task.Wait();
-                Console.WriteLine("Message Sent");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"{ex.GetType().Name} thrown when sending SignalR feed to Hub: {ex.Message}");
-                logger.Error(ex, $"{ex.GetType().Name} thrown when sending SignalR feed to Hub: {ex.Message}");
-            }
-
-        }
-
-        private void Connection_Closed()
-        {
-            Console.WriteLine($"SignalR connection closed");
-        }
-
-        private void Connection_ConnectionSlow()
-        {
-            Console.WriteLine($"SignalR connection is slow.");
-        }
-
-        private void Connection_Error(Exception obj)
-        {
-            Console.WriteLine($"{obj.GetType().Name} thrown on SignalR connection: {obj.Message}");
-            logger.Error($"{obj.GetType().Name} thrown on SignalR connection: {obj.Message}");
-        }
+     
 
     }
 }
