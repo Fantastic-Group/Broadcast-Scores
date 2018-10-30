@@ -122,7 +122,7 @@ namespace BroadcastScores
                                 }
                             };
                         }
-                        catch (IOException e)
+                        catch (Exception e)
                         {
                             Console.WriteLine(e.Message);
                             logger.Error(e, $"{e.GetType().Name}  Webclient feeds pulling: {e.Message}");
