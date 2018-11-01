@@ -111,7 +111,7 @@ namespace BroadcastScores
                             else if (ordinalPeriod == 4)
                             {
                                 objExistingScore.q4home = home_score - (objExistingScore.q1home + objExistingScore.q2home + objExistingScore.q3home);
-                                objExistingScore.q4away = away_score - (objExistingScore.q1away + objExistingScore.q2away + objExistingScore.q4home);
+                                objExistingScore.q4away = away_score - (objExistingScore.q1away + objExistingScore.q2away + objExistingScore.q3away);
                             }
                         }
                         else
@@ -183,7 +183,7 @@ namespace BroadcastScores
             catch (Exception ex)
             {
                 Console.WriteLine($"{ex.GetType().Name} thrown when creating Gamefeed object: {ex.Message}");
-                logger.Error(ex, $"{ex.GetType().Name} thrown when creating Gamefeed object: {ex.Message + ex.InnerException.Message + ex.StackTrace}");
+                logger.Error(ex, $"{ex.GetType().Name} thrown when creating Gamefeed object: {ex.Message +  ex.StackTrace}");
             }
             return null;
         }

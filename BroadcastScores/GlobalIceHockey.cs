@@ -24,38 +24,38 @@ using EnterGamingRelay;
 
 namespace BroadcastScores
 {
-    class NHL
+    class GlobalIceHockey
     {
         static Logger logger = LogManager.GetCurrentClassLogger();
         ProcessSignalR objProcessSignalR = new ProcessSignalR();
 
         static string SqlUrl { get; set; }
-        string NHLGamesScheduleAPI { get; set; }
-        string NHLScoreAPI { get; set; }
-        static List<NHLGame> todaysGames = new List<NHLGame>();
+        string GlobalIceHockeyGamesScheduleAPI { get; set; }
+        string GlobalIceHockeyScoreAPI { get; set; }
+        static List<GlobalIceHockeyGame> todaysGames = new List<GlobalIceHockeyGame>();
 
 
-        public NHL(string strNHLScoreAPI)
+        public GlobalIceHockey(string strGlobalIceHockeyScoreAPI)
         {
             SqlUrl = ConfigurationManager.AppSettings["SqlUrl"];
 
-            NHLScoreAPI = strNHLScoreAPI;
-            NHLGamesScheduleAPI = ConfigurationManager.AppSettings["NHLGamesScheduleAPI"];
+            GlobalIceHockeyScoreAPI = strGlobalIceHockeyScoreAPI;
+            GlobalIceHockeyGamesScheduleAPI = ConfigurationManager.AppSettings["GlobalIceHockeyGamesScheduleAPI"];
 
 
-            if (String.IsNullOrWhiteSpace(strNHLScoreAPI))
-                throw new ArgumentException("NHL needs Score API URL", nameof(strNHLScoreAPI));
+            if (String.IsNullOrWhiteSpace(strGlobalIceHockeyScoreAPI))
+                throw new ArgumentException("GlobalIceHockey needs Score API URL", nameof(strGlobalIceHockeyScoreAPI));
 
             if (String.IsNullOrWhiteSpace(SqlUrl))
-                throw new ArgumentException("NHL needs SqlUrl set to the base URL for the EG SQL service", nameof(SqlUrl));
+                throw new ArgumentException("GlobalIceHockey needs SqlUrl set to the base URL for the EG SQL service", nameof(SqlUrl));
 
-            if (String.IsNullOrWhiteSpace(NHLGamesScheduleAPI))
-                throw new ArgumentException("NHL needs GameSchedule API URL", nameof(NHLGamesScheduleAPI));
+            if (String.IsNullOrWhiteSpace(GlobalIceHockeyGamesScheduleAPI))
+                throw new ArgumentException("GlobalIceHockey needs GameSchedule API URL", nameof(GlobalIceHockeyGamesScheduleAPI));
 
 
         }
 
-        public async Task BuildNHLScores()
+        public async Task BuildGlobalIceHockeyScores()
         {
             while (true)
             {
@@ -70,7 +70,7 @@ namespace BroadcastScores
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"{ex.GetType().Name} thrown when fetching and creating NHL Score object: {ex.Message}");
+                    Console.WriteLine($"{ex.GetType().Name} thrown when fetching and creating GlobalIceHockey Score object: {ex.Message}");
                 }
                 System.Threading.Thread.Sleep(10000);
             }
@@ -82,26 +82,21 @@ namespace BroadcastScores
             {
             todaysGames.Clear();
             XmlDocument doc = new XmlDocument();
-            string gameScheduleAPI = NHLGamesScheduleAPI;
-            gameScheduleAPI = gameScheduleAPI.Replace("{year}", DateTime.UtcNow.Year.ToString());
-            gameScheduleAPI = gameScheduleAPI.Replace("{month}", DateTime.UtcNow.Month.ToString());
-            gameScheduleAPI = gameScheduleAPI.Replace("{day}", DateTime.UtcNow.Day.ToString());
+            string gameScheduleAPI = GlobalIceHockeyGamesScheduleAPI;
+            gameScheduleAPI = gameScheduleAPI.Replace("{date}", DateTime.UtcNow.ToString("yyyy-MM-dd"));
             doc.Load(gameScheduleAPI);
-            XmlNode nodeGames = doc.GetElementsByTagName("games").Item(0);
+            XmlNode nodeGames = doc.GetElementsByTagName("schedule").Item(0);
 
             if(nodeGames != null)
             foreach (XmlNode xmlGame in nodeGames)
             {
                 string gameStatus = xmlGame.Attributes["status"].Value;
-                if (gameStatus.ToUpper() == "INPROGRESS")
+                if (gameStatus.ToUpper() == "LIVE")
                 {
                     todaysGames.Add(
-                        new NHLGame
+                        new GlobalIceHockeyGame
                         {
-                                //Home = xmlGame.Attributes["home"].Value,
-                                //Away = xmlGame.Attributes["away"].Value,
-                                GameID = xmlGame.Attributes["id"].Value,
-                            MatchID = xmlGame.Attributes["scheduled"].Value
+                            MatchID = xmlGame.Attributes["id"].Value
                         });
                 }
             }
@@ -109,8 +104,8 @@ namespace BroadcastScores
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"{ex.GetType().Name} thrown when getting todays NHL Games : {ex.Message}");
-                logger.Error(ex, $"{ex.GetType().Name} thrown when getting todays NHL Games : {ex.Message +  ex.StackTrace}");
+                Console.WriteLine($"{ex.GetType().Name} thrown when getting todays GlobalIceHockey Games : {ex.Message}");
+                logger.Error(ex, $"{ex.GetType().Name} thrown when getting todays GlobalIceHockey Games : {ex.Message +  ex.StackTrace}");
             }
         }
 
@@ -118,29 +113,29 @@ namespace BroadcastScores
         {
             XmlDocument doc = new XmlDocument();
 
-            foreach (NHLGame gameDetails in todaysGames)
+            foreach (GlobalIceHockeyGame gameDetails in todaysGames)
             {
-                String currentGameURL = NHLScoreAPI;
-                currentGameURL = currentGameURL.Replace("{gameID}", gameDetails.GameID);
+                String currentGameURL = GlobalIceHockeyScoreAPI;
+                currentGameURL = currentGameURL.Replace("{matchID}", gameDetails.MatchID);
                 try
                 {
                     doc.Load(currentGameURL);
-                    EventMessage msg = CreateNHLScoreMessage(doc.InnerXml);
+                    EventMessage msg = CreateGlobalIceHockeyScoreMessage(doc.InnerXml);
                     if (msg != null)
                     {
-                        objProcessSignalR.SendSignalRFeedtohub(msg, "NHL");
+                        objProcessSignalR.SendSignalRFeedtohub(msg, "Global Hockey");
                     }
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"{ex.GetType().Name} - NHL Score feed pulling from API : {ex.Message}");
-                    logger.Error(ex, $"{ex.GetType().Name} - NHL Score feed pulling from API : {ex.Message +  ex.StackTrace}");
+                    Console.WriteLine($"{ex.GetType().Name} - GlobalIceHockey Score feed pulling from API : {ex.Message}");
+                    logger.Error(ex, $"{ex.GetType().Name} - GlobalIceHockey Score feed pulling from API : {ex.Message +  ex.StackTrace}");
                 }
             }
 
         }
 
-        public EventMessage CreateNHLScoreMessage(string XMLScorefeed)
+        public EventMessage CreateGlobalIceHockeyScoreMessage(string XMLScorefeed)
         {
             try
             {
@@ -150,20 +145,11 @@ namespace BroadcastScores
 
                 if (!String.IsNullOrEmpty(XMLScorefeed))
                 {
-                    XmlNode nodeGame = doc.GetElementsByTagName("game").Item(0);
-                    string gameStatus = nodeGame.Attributes["period"].Value;
-                    if (gameStatus.ToUpper() == "SCHEDULED")
-                    {
-                        return null;
-                    }
-                    XmlNode homeScoreXml = doc.GetElementsByTagName("team").Item(0).FirstChild;
-                    XmlNode awayScoreXml = doc.GetElementsByTagName("team").Item(1).FirstChild;
-                    if(homeScoreXml == null || awayScoreXml == null || nodeGame == null)
-                    {
-                        return null;
-                    }
+                    XmlNode nodesport_event = doc.GetElementsByTagName("sport_event").Item(0);
+                    XmlNode nodeSportEventStatus = doc.GetElementsByTagName("sport_event_status").Item(0);
+                    XmlNode nodeperiodScores = doc.GetElementsByTagName("period_scores").Item(0);
 
-                    string matchID = nodeGame.Attributes["sr_id"].Value;
+                    string matchID = nodesport_event.Attributes["id"].Value;
                     matchID = matchID.Replace("sr:match:", "");
                     string[] matchIDs = { matchID };
                     var matchEventsTask = new EGSqlQuery(SqlUrl).MatchIDsToEventAsync(matchIDs);
@@ -177,14 +163,14 @@ namespace BroadcastScores
                         int eventID = matchEventsTask.Result[Convert.ToInt32(matchID)];
 
                         List<Period> periodList = new List<Period>();
-                        if (homeScoreXml.HasChildNodes && awayScoreXml.HasChildNodes)
-                            for (int i = 0; i < homeScoreXml.ChildNodes.Count; i++)
+                        if (nodeperiodScores.HasChildNodes)
+                            foreach (XmlNode x in nodeperiodScores.ChildNodes)
                             {
                                 periodList.Add(new Period
                                 {
-                                    Name = Convert.ToString(i + 1),
-                                    Home = Convert.ToInt32(homeScoreXml.ChildNodes[i].Attributes["points"].Value),
-                                    Visitor = Convert.ToInt32(awayScoreXml.ChildNodes[i].Attributes["points"].Value),
+                                    Name = x.Attributes["number"].Value,
+                                    Home = Convert.ToInt32(x.Attributes["home_score"].Value),
+                                    Visitor = Convert.ToInt32(x.Attributes["away_score"].Value),
                                 });
                             }
 
@@ -193,18 +179,11 @@ namespace BroadcastScores
 
                         if (periodList != null)
                         {
-                            home_score = Convert.ToInt32(doc.GetElementsByTagName("team").Item(0).Attributes["points"].Value);
-                            away_score = Convert.ToInt32(doc.GetElementsByTagName("team").Item(1).Attributes["points"].Value);
+                            home_score = Convert.ToInt32(nodeSportEventStatus.Attributes["home_score"].Value);
+                            away_score = Convert.ToInt32(nodeSportEventStatus.Attributes["away_score"].Value);
                         }
 
-                        //if (periodList.Count == 0)
-                        //    periodList.Add(new Period
-                        //    {
-                        //        Name = Convert.ToString(1),
-                        //        Home = home_score,
-                        //        Visitor = away_score
-                        //    });
-
+                        string gameStatus = nodeSportEventStatus.Attributes["status"].Value;
                         string ordinalPeriod = gameStatus;
                         if (gameStatus == "1")
                             gameStatus = "1st Period";
@@ -237,7 +216,7 @@ namespace BroadcastScores
                                 Score = new Score
                                 {
                                     CurrentPeriod = gameStatus,
-                                    OrdinalPeriod = Convert.ToInt32(ordinalPeriod),
+                                    OrdinalPeriod = Convert.ToInt32(gameStatus),
                                     Time = null,
                                     Home = home_score,
                                     Visitor = away_score,
@@ -259,12 +238,9 @@ namespace BroadcastScores
 
     }
 
-    class NHLGame
+    class GlobalIceHockeyGame
     {
-        //public string Home { get; set; }
-        //public string Away { get; set; }
-        public string GameID { get; set; }
         public string MatchID { get; set; }
     }
-
+    
 }

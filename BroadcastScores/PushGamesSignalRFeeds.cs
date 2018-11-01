@@ -70,17 +70,22 @@ namespace BroadcastScores
                 if (urlScorePull.ToUpper().Contains("NCAAF"))
                 {
                     NCAAF objNCAAF = new NCAAF(urlScorePull);
-                    objNCAAF.BuildNCAAFScores();
+                    await objNCAAF.BuildNCAAFScores();
                 }
                 else if (urlScorePull.ToUpper().Contains("NHL"))
                 {
                     NHL objNHL = new NHL(urlScorePull);
-                    objNHL.BuildNHLScores();
+                    await objNHL.BuildNHLScores();
                 }
                 else if (urlScorePull.ToUpper().Contains("NBA"))
                 {
                     NBA objNBA = new NBA(urlScorePull);
-                    objNBA.BuildNBAScores();
+                    await objNBA.BuildNBAScores();
+                }
+                else if (urlScorePull.ToUpper().Contains("HOCKEY") && urlScorePull.ToUpper().Contains("ICE"))
+                {
+                    GlobalIceHockey objGlobalIceHockey = new GlobalIceHockey(urlScorePull);
+                    await objGlobalIceHockey.BuildGlobalIceHockeyScores();
                 }
                 else // For all Push feeds
                 {
@@ -104,7 +109,7 @@ namespace BroadcastScores
 
                                             if (msgScore != null)
                                             {
-                                                objProcessSignalR.SendSignalRFeedtohub(msgScore);
+                                                objProcessSignalR.SendSignalRFeedtohub(msgScore,"NFL");
                                             }
                                         }
                                         else if (data.StartsWith("<root"))
@@ -114,15 +119,15 @@ namespace BroadcastScores
                                                 if (urlScorePull.ToUpper().Contains("TENNIS"))
                                                 {
                                                     msgScore = CreateTennisScoreMessage(data);
+                                                    if (msgScore != null)
+                                                        objProcessSignalR.SendSignalRFeedtohub(msgScore,"Tennis");
                                                 }
-                                                else
+                                                else if (urlScorePull.ToUpper().Contains("SOCCER"))
                                                 {
                                                     msgScore = CreateGamesScoreMessage(data);
+                                                    if (msgScore != null)
+                                                        objProcessSignalR.SendSignalRFeedtohub(msgScore,"Soccer");
                                                 }
-                                            }
-                                            if (msgScore != null)
-                                            {
-                                                objProcessSignalR.SendSignalRFeedtohub(msgScore);
                                             }
                                         }
 
@@ -146,7 +151,7 @@ namespace BroadcastScores
             catch (Exception ex)
             {
                 Console.WriteLine($"{ex.GetType().Name} thrown when converting BR scores: {ex.Message}");
-                logger.Error(ex, $"{ex.GetType().Name} thrown when converting BR scores: {ex.Message + ex.InnerException.Message + ex.StackTrace}");
+                logger.Error(ex, $"{ex.GetType().Name} thrown when converting BR scores: {ex.Message +  ex.StackTrace}");
             }
 
             //GenerateCollegeScoresFiles();
@@ -245,7 +250,7 @@ namespace BroadcastScores
             catch (Exception ex)
             {
                 Console.WriteLine($"{ex.GetType().Name} thrown when creating Gamefeed object: {ex.Message}");
-                logger.Error(ex, $"{ex.GetType().Name} thrown when creating Gamefeed object: {ex.Message + ex.InnerException.Message + ex.StackTrace}");
+                logger.Error(ex, $"{ex.GetType().Name} thrown when creating Gamefeed object: {ex.Message +  ex.StackTrace}");
             }
             return null;
         }
@@ -325,7 +330,7 @@ namespace BroadcastScores
             catch (Exception ex)
             {
                 Console.WriteLine($"{ex.GetType().Name} thrown when creating Tennis Gamefeed object: {ex.Message}");
-                logger.Error(ex, $"{ex.GetType().Name} thrown when creating Tennis Gamefeed object: {ex.Message + ex.InnerException.Message + ex.StackTrace}");
+                logger.Error(ex, $"{ex.GetType().Name} thrown when creating Tennis Gamefeed object: {ex.Message +  ex.StackTrace}");
             }
             return null;
         }

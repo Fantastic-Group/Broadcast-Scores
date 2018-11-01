@@ -53,13 +53,13 @@ namespace BroadcastScores
             connection.Start().Wait();
         }
 
-        public void SendSignalRFeedtohub(EventMessage msg)
+        public void SendSignalRFeedtohub(EventMessage msg, string Sport)
         {
             try
             {
                 string serialised = JsonConvert.SerializeObject(msg.Value);
                 string authHash = $"{serialised}{salt}".ToSHA256();
-                if(connection.State.ToString().ToUpper()=="CLOSED")
+                if (connection.State.ToString().ToUpper() == "DISCONNECTED")
                 {
                     connection.Start().Wait();
                 }
@@ -67,12 +67,13 @@ namespace BroadcastScores
                 var task = proxy.Invoke(method, authHash, msg.Value);
                 objFeedsToDisk.WritefeedToDisk(msg);
                 task.Wait();
-                Console.WriteLine("Message Sent");
+                Console.WriteLine("Message Sent for "+ Sport);
+                connection.Stop();
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"{ex.GetType().Name} thrown when sending SignalR feed to Hub: {ex.Message}");
-                logger.Error(ex, $"{ex.GetType().Name} thrown when sending SignalR feed to Hub: {ex.Message + ex.InnerException.Message + ex.StackTrace}");
+                logger.Error(ex, $"{ex.GetType().Name} thrown when sending SignalR feed to Hub: {ex.Message +  ex.StackTrace}");
             }
 
         }

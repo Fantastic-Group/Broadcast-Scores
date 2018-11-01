@@ -85,7 +85,7 @@ namespace BroadcastScores
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"{ex.GetType().Name} thrown when fetching and creating NCAAF Score object: {ex.Message + ex.InnerException.Message + ex.StackTrace}");
+                    Console.WriteLine($"{ex.GetType().Name} thrown when fetching and creating NCAAF Score object: {ex.Message +  ex.StackTrace}");
                 }
                 System.Threading.Thread.Sleep(10000);
             }
@@ -114,7 +114,7 @@ namespace BroadcastScores
             catch (Exception ex)
             {
                 Console.WriteLine($"{ex.GetType().Name} thrown when getting todays NCAAFB Games : {ex.Message}");
-                logger.Error(ex, $"{ex.GetType().Name} thrown when getting todays NCAAFB Games : {ex.Message + ex.InnerException.Message + ex.StackTrace}");
+                logger.Error(ex, $"{ex.GetType().Name} thrown when getting todays NCAAFB Games : {ex.Message +  ex.StackTrace}");
             }
         }
 
@@ -133,16 +133,20 @@ namespace BroadcastScores
                 {
                     doc.Load(currentGameURL);
                     var eventID = EGSql.GetEventIDbyGameInfoAsync(new EGSqlQuery(SqlUrl), TeamNameList[gameDetails.Home], TeamNameList[gameDetails.Away], gameDetails.GameDate);
+
+                    if (!eventID.IsCompleted)
+                        eventID.Wait();
+
                     EventMessage msg = CreateCollegeFootballScoreMessage(doc.InnerXml, Convert.ToString(eventID));
                     if (msg != null)
                     {
-                        objProcessSignalR.SendSignalRFeedtohub(msg);
+                        objProcessSignalR.SendSignalRFeedtohub(msg, "NCAAFB");
                     }
                 }
                 catch (Exception ex)
                 {
                     Console.WriteLine($"{ex.GetType().Name} - NCAAFB Score feed pulling from API : {ex.Message}");
-                    logger.Error(ex, $"{ex.GetType().Name} - NCAAFB Score feed pulling from API : {ex.Message + ex.InnerException.Message + ex.StackTrace}");
+                    logger.Error(ex, $"{ex.GetType().Name} - NCAAFB Score feed pulling from API : {ex.Message +  ex.StackTrace}");
                 }
             }
 
@@ -245,7 +249,7 @@ namespace BroadcastScores
             catch (Exception ex)
             {
                 Console.WriteLine($"{ex.GetType().Name} thrown when creating Gamefeed object: {ex.Message}");
-                logger.Error(ex, $"{ex.GetType().Name} thrown when creating Gamefeed object:{ex.Message + ex.InnerException.Message + ex.StackTrace}");
+                logger.Error(ex, $"{ex.GetType().Name} thrown when creating Gamefeed object:{ex.Message +  ex.StackTrace}");
             }
             return null;
         }
@@ -262,7 +266,7 @@ namespace BroadcastScores
             XmlDocument doc = new XmlDocument();
             string gamesScheduleAPI = NCAAFBGamesScheduleAPI;
             gamesScheduleAPI = gamesScheduleAPI.Replace("{year}", DateTime.UtcNow.Year.ToString());
-            doc.Load(NCAAFBGamesScheduleAPI);
+            doc.Load(gamesScheduleAPI);
             XmlNode nodeSeason = doc.GetElementsByTagName("season").Item(0);
 
             foreach (XmlNode xmlWeek in nodeSeason)

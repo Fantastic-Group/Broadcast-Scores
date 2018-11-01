@@ -111,7 +111,17 @@ namespace BroadcastScores
                             else if (ordinalPeriod == 4)
                             {
                                 objExistingScore.q4home = home_score - (objExistingScore.q1home + objExistingScore.q2home + objExistingScore.q3home);
-                                objExistingScore.q4away = away_score - (objExistingScore.q1away + objExistingScore.q2away + objExistingScore.q4home);
+                                objExistingScore.q4away = away_score - (objExistingScore.q1away + objExistingScore.q2away + objExistingScore.q3away);
+                            }
+                            else if (ordinalPeriod == 5)
+                            {
+                                objExistingScore.q5home = home_score - (objExistingScore.q1home + objExistingScore.q2home + objExistingScore.q3home + objExistingScore.q4home);
+                                objExistingScore.q5away = away_score - (objExistingScore.q1away + objExistingScore.q2away + objExistingScore.q3away + objExistingScore.q4away);
+                            }
+                            else if (ordinalPeriod == 6)
+                            {
+                                objExistingScore.q5home = home_score - (objExistingScore.q1home + objExistingScore.q2home + objExistingScore.q3home + objExistingScore.q4home + objExistingScore.q5home);
+                                objExistingScore.q5away = away_score - (objExistingScore.q1away + objExistingScore.q2away + objExistingScore.q3away + objExistingScore.q4away + objExistingScore.q5away);
                             }
                         }
                         else
@@ -128,6 +138,10 @@ namespace BroadcastScores
                                     q3away = (ordinalPeriod == 3) ? away_score : 0,
                                     q4home = (ordinalPeriod == 4) ? home_score : 0,
                                     q4away = (ordinalPeriod == 4) ? away_score : 0,
+                                    q5home = (ordinalPeriod == 5) ? home_score : 0,
+                                    q5away = (ordinalPeriod == 5) ? away_score : 0,
+                                    q6home = (ordinalPeriod == 6) ? home_score : 0,
+                                    q6away = (ordinalPeriod == 6) ? away_score : 0,
                                     createdDate = DateTime.UtcNow
                                 }
                             );
@@ -143,21 +157,48 @@ namespace BroadcastScores
                     }
                     else if (ordinalPeriod == 2)
                     {
-                        periodList.Add(new Period { Name = Convert.ToString(1),Home = objScore.q1home,Visitor = objScore.q1away });
-                        periodList.Add(new Period { Name = Convert.ToString(2), Home = objScore.q2home, Visitor = objScore.q2away });
+                        periodList.Add(new Period { Name = "1",Home = objScore.q1home,Visitor = objScore.q1away });
+                        periodList.Add(new Period { Name = "2", Home = objScore.q2home, Visitor = objScore.q2away });
                     }
                     else if (ordinalPeriod == 3)
                     {
-                        periodList.Add(new Period { Name = Convert.ToString(1), Home = objScore.q1home, Visitor = objScore.q1away });
-                        periodList.Add(new Period { Name = Convert.ToString(2), Home = objScore.q2home, Visitor = objScore.q2away });
-                        periodList.Add(new Period { Name = Convert.ToString(3), Home = objScore.q3home, Visitor = objScore.q3away });
+                        periodList.Add(new Period { Name = "1", Home = objScore.q1home, Visitor = objScore.q1away });
+                        periodList.Add(new Period { Name = "2", Home = objScore.q2home, Visitor = objScore.q2away });
+                        periodList.Add(new Period { Name = "3", Home = objScore.q3home, Visitor = objScore.q3away });
                     }
                     else if (ordinalPeriod == 4)
                     {
-                        periodList.Add(new Period { Name = Convert.ToString(1), Home = objScore.q1home, Visitor = objScore.q1away });
-                        periodList.Add(new Period { Name = Convert.ToString(2), Home = objScore.q2home, Visitor = objScore.q2away });
-                        periodList.Add(new Period { Name = Convert.ToString(3), Home = objScore.q3home, Visitor = objScore.q3away });
-                        periodList.Add(new Period { Name = Convert.ToString(4), Home = objScore.q4home, Visitor = objScore.q4away });
+                        periodList.Add(new Period { Name = "1", Home = objScore.q1home, Visitor = objScore.q1away });
+                        periodList.Add(new Period { Name = "2", Home = objScore.q2home, Visitor = objScore.q2away });
+                        periodList.Add(new Period { Name = "3", Home = objScore.q3home, Visitor = objScore.q3away });
+                        periodList.Add(new Period { Name = "4", Home = objScore.q4home, Visitor = objScore.q4away });
+                    }
+                    else if (ordinalPeriod == 5)
+                    {
+                        periodList.Add(new Period { Name = "1", Home = objScore.q1home, Visitor = objScore.q1away });
+                        periodList.Add(new Period { Name = "2", Home = objScore.q2home, Visitor = objScore.q2away });
+                        periodList.Add(new Period { Name = "3", Home = objScore.q3home, Visitor = objScore.q3away });
+                        periodList.Add(new Period { Name = "4", Home = objScore.q4home, Visitor = objScore.q4away });
+                        periodList.Add(new Period { Name = "5", Home = objScore.q5home, Visitor = objScore.q5away });
+                    }
+                    else if (ordinalPeriod == 6)
+                    {
+                        periodList.Add(new Period { Name = "1", Home = objScore.q1home, Visitor = objScore.q1away });
+                        periodList.Add(new Period { Name = "2", Home = objScore.q2home, Visitor = objScore.q2away });
+                        periodList.Add(new Period { Name = "3", Home = objScore.q3home, Visitor = objScore.q3away });
+                        periodList.Add(new Period { Name = "4", Home = objScore.q4home, Visitor = objScore.q4away });
+                        periodList.Add(new Period { Name = "5", Home = objScore.q5home, Visitor = objScore.q5away });
+                        periodList.Add(new Period { Name = "6", Home = objScore.q6home, Visitor = objScore.q6away });
+                    }
+                    else if (ordinalPeriod == 7)
+                    {
+                        periodList.Add(new Period { Name = "1", Home = objScore.q1home, Visitor = objScore.q1away });
+                        periodList.Add(new Period { Name = "2", Home = objScore.q2home, Visitor = objScore.q2away });
+                        periodList.Add(new Period { Name = "3", Home = objScore.q3home, Visitor = objScore.q3away });
+                        periodList.Add(new Period { Name = "4", Home = objScore.q4home, Visitor = objScore.q4away });
+                        periodList.Add(new Period { Name = "5", Home = objScore.q5home, Visitor = objScore.q5away });
+                        periodList.Add(new Period { Name = "6", Home = objScore.q6home, Visitor = objScore.q6away });
+                        periodList.Add(new Period { Name = "7", Home = objScore.q7home, Visitor = objScore.q7away });
                     }
                     // End : NFL Period Score History
 
@@ -190,7 +231,7 @@ namespace BroadcastScores
             catch (Exception ex)
             {
                 Console.WriteLine($"{ex.GetType().Name} thrown when creating Gamefeed object: {ex.Message}");
-                logger.Error(ex, $"{ex.GetType().Name} thrown when creating Gamefeed object: {ex.Message + ex.InnerException.Message + ex.StackTrace}");
+                logger.Error(ex, $"{ex.GetType().Name} thrown when creating Gamefeed object: {ex.Message +  ex.StackTrace}");
             }
             return null;
         }
@@ -209,6 +250,12 @@ namespace BroadcastScores
         public int q3away { get; set; }
         public int q4home { get; set; }
         public int q4away { get; set; }
+        public int q5home { get; set; }
+        public int q5away { get; set; }
+        public int q6home { get; set; }
+        public int q6away { get; set; }
+        public int q7home { get; set; }
+        public int q7away { get; set; }
         public DateTime createdDate { get; set; }
     }
 

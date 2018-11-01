@@ -66,7 +66,7 @@ namespace BroadcastScores
             }
             catch(Exception ex)
             {
-                logger.Error(ex, $"{ex.GetType().Name} thrown when running ProcessGameScores : {ex.Message + ex.InnerException.Message + ex.StackTrace}");
+                logger.Error(ex, $"{ex.GetType().Name} thrown when running ProcessGameScores : {ex.Message +  ex.StackTrace}");
             }
         }
 

@@ -53,7 +53,7 @@ namespace BroadcastScores
             }
             catch (Exception ex)
             {
-                logger.Error($"{ex.GetType().Name} thrown when serialising object and writing ScoreFeeds to file : {ex.Message + ex.InnerException.Message + ex.StackTrace}");
+                logger.Error($"{ex.GetType().Name} thrown when serialising object and writing ScoreFeeds to file : {ex.Message +  ex.StackTrace}");
             }
         }
 

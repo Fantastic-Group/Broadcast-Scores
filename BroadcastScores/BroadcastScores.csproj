@@ -72,7 +72,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="EGSql.cs" />
+    <Compile Include="GlobalBasketBall.cs" />
     <Compile Include="NBA.cs" />
+    <Compile Include="GlobalIceHockey.cs" />
     <Compile Include="NHL.cs" />
     <Compile Include="NCAAF.cs" />
     <Compile Include="NFL.cs" />

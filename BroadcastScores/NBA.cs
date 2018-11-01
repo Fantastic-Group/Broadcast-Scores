@@ -95,7 +95,7 @@ namespace BroadcastScores
                     foreach (XmlNode xmlGame in nodeGames)
                     {
                         string gameStatus = xmlGame.Attributes["status"].Value;
-                        if (gameStatus.ToUpper() != "CLOSED")
+                        if (gameStatus.ToUpper() != "CLOSED" || gameStatus.ToUpper() != "SCHEDULED")
                         {
                             todaysGames.Add(
                                 new NBAGame
@@ -108,8 +108,8 @@ namespace BroadcastScores
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"{ex.GetType().Name} thrown when getting todays NBA Games : {ex.Message}");
-                logger.Error(ex, $"{ex.GetType().Name} thrown when getting todays NBA Games : {ex.Message + ex.InnerException.Message + ex.StackTrace}");
+                Console.WriteLine("GetTodaysGames : " + $"{ex.GetType().Name} thrown when getting todays NBA Games : {ex.Message}");
+                logger.Error(ex, "GetTodaysGames : " + $"{ex.GetType().Name} thrown when getting todays NBA Games : {ex.Message + ex.StackTrace}");
             }
 
         }
@@ -124,32 +124,35 @@ namespace BroadcastScores
                 try
                 {
                     doc.Load(currentGameURL);
+                    EventMessage msg = CreateNBAScoreMessage(doc.InnerXml, gameDetails.MatchID);
+
+                    //-------------------------------------------
                     //XDocument doc1 = new XDocument();
                     //var request = (HttpWebRequest)WebRequest.Create(currentGameURL);
-                    //request.UserAgent = "(Anything other than an empty string)";
-
+                    //request.UserAgent = ("User-Agent: Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; WOW64; Trident/5.0) Gecko/20100101 Firefox/25.0");
                     //using (var response = request.GetResponse())
                     //using (var stream = response.GetResponseStream())
                     //{
                     //    doc1 = XDocument.Load(stream);
                     //}
+                    //EventMessage msg = CreateNBAScoreMessage(doc1.ToString());
+                    //-------------------------------------------
 
-                    EventMessage msg = CreateNBAScoreMessage(doc.InnerXml);
                     if (msg != null)
                     {
-                        objProcessSignalR.SendSignalRFeedtohub(msg);
+                        objProcessSignalR.SendSignalRFeedtohub(msg, "NBA");
                     }
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"{ex.GetType().Name} - NBA Score feed pulling from API : {ex.Message}");
-                    logger.Error(ex, $"{ex.GetType().Name} - NBA Score feed pulling from API : {ex.Message + ex.InnerException.Message + ex.StackTrace}");
+                    Console.WriteLine("FetchAndSendScores : " +$"{ex.GetType().Name} - NBA Score feed pulling from API : {ex.Message}");
+                    logger.Error(ex, "FetchAndSendScores : " + $"{ex.GetType().Name} - NBA Score feed pulling from API : {ex.Message + ex.StackTrace}");
                 }
             }
 
         }
 
-        public EventMessage CreateNBAScoreMessage(string XMLScorefeed)
+        public EventMessage CreateNBAScoreMessage(string XMLScorefeed, string matchID)
         {
             try
             {
@@ -160,8 +163,9 @@ namespace BroadcastScores
                 if (!String.IsNullOrEmpty(XMLScorefeed))
                 {
                     XmlNode nodeGame = doc.GetElementsByTagName("game").Item(0);
+
                     string gameStatus = nodeGame.Attributes["status"].Value;
-                    if(gameStatus.ToUpper() == "SCHEDULED")
+                    if (gameStatus.ToUpper() == "SCHEDULED")
                     {
                         return null;
                     }
@@ -172,7 +176,6 @@ namespace BroadcastScores
                         return null;
                     }
 
-                    string matchID = nodeGame.Attributes["sr_id"].Value;
                     matchID = matchID.Replace("sr:match:", "");
                     string[] matchIDs = { matchID };
                     var matchEventsTask = new EGSqlQuery(SqlUrl).MatchIDsToEventAsync(matchIDs);
@@ -206,16 +209,7 @@ namespace BroadcastScores
                             away_score = Convert.ToInt32(doc.GetElementsByTagName("team").Item(1).Attributes["points"].Value);
                         }
 
-                        //if (periodList.Count == 0)
-                        //    periodList.Add(new Period
-                        //    {
-                        //        Name = Convert.ToString(1),
-                        //        Home = home_score,
-                        //        Visitor = away_score
-                        //    });
-
-
-                        
+                        string ordinalPeriod = gameStatus;
                         if (gameStatus == "1")
                             gameStatus = "1st Quarter";
                         else if (gameStatus == "2")
@@ -251,7 +245,7 @@ namespace BroadcastScores
                                 Score = new Score
                                 {
                                     CurrentPeriod = gameStatus,
-                                    OrdinalPeriod = Convert.ToInt32(gameStatus),
+                                    OrdinalPeriod = Convert.ToInt32(ordinalPeriod),
                                     Time = null,
                                     Home = home_score,
                                     Visitor = away_score,
@@ -266,7 +260,7 @@ namespace BroadcastScores
             catch (Exception ex)
             {
                 Console.WriteLine($"{ex.GetType().Name} thrown when creating Gamefeed object: {ex.Message}");
-                logger.Error(ex, $"{ex.GetType().Name} thrown when creating Gamefeed object: {ex.Message + ex.InnerException.Message + ex.StackTrace}");
+                logger.Error(ex, $"{ex.GetType().Name} thrown when creating Gamefeed object: {ex.Message + ex.StackTrace}");
             }
             return null;
         }
