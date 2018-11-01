@@ -35,7 +35,7 @@ namespace BroadcastScores
         public static string hubUrl, salt, hub, method;
         static Logger logger = LogManager.GetCurrentClassLogger();
         ProcessSignalR objProcessSignalR = new ProcessSignalR();
-        NFL objNFL = new NFL();
+        NFLStream objNFL = new NFLStream();
 
 
         public PushGamesSignalRFeeds()
@@ -71,6 +71,16 @@ namespace BroadcastScores
                 {
                     NCAAF objNCAAF = new NCAAF(urlScorePull);
                     objNCAAF.BuildNCAAFScores();
+                }
+                else if (urlScorePull.ToUpper().Contains("NHL"))
+                {
+                    NHL objNHL = new NHL(urlScorePull);
+                    objNHL.BuildNHLScores();
+                }
+                else if (urlScorePull.ToUpper().Contains("NBA"))
+                {
+                    NBA objNBA = new NBA(urlScorePull);
+                    objNBA.BuildNBAScores();
                 }
                 else // For all Push feeds
                 {
@@ -124,7 +134,7 @@ namespace BroadcastScores
                         }
                         catch (Exception e)
                         {
-                            Console.WriteLine(e.Message);
+                            Console.WriteLine($"{e.GetType().Name}  Webclient feeds pulling: {e.Message}");
                             logger.Error(e, $"{e.GetType().Name}  Webclient feeds pulling: {e.Message}");
                         }
                         await client.OpenReadTaskAsync(urlScorePull);
@@ -136,7 +146,7 @@ namespace BroadcastScores
             catch (Exception ex)
             {
                 Console.WriteLine($"{ex.GetType().Name} thrown when converting BR scores: {ex.Message}");
-                logger.Error(ex, $"{ex.GetType().Name} thrown when converting BR scores: {ex.Message}");
+                logger.Error(ex, $"{ex.GetType().Name} thrown when converting BR scores: {ex.Message + ex.InnerException.Message + ex.StackTrace}");
             }
 
             //GenerateCollegeScoresFiles();
@@ -235,7 +245,7 @@ namespace BroadcastScores
             catch (Exception ex)
             {
                 Console.WriteLine($"{ex.GetType().Name} thrown when creating Gamefeed object: {ex.Message}");
-                logger.Error(ex, $"{ex.GetType().Name} thrown when creating Gamefeed object: {ex.Message}");
+                logger.Error(ex, $"{ex.GetType().Name} thrown when creating Gamefeed object: {ex.Message + ex.InnerException.Message + ex.StackTrace}");
             }
             return null;
         }
@@ -284,8 +294,8 @@ namespace BroadcastScores
                                                                 : CapitalizeFirstLetter(gameStatus.Replace("_", " "));
 
 
-
                     var scoreMsg = new EventMessage
+
                     {
                         Parent = null,
                         Collected = DateTime.UtcNow,
@@ -315,7 +325,7 @@ namespace BroadcastScores
             catch (Exception ex)
             {
                 Console.WriteLine($"{ex.GetType().Name} thrown when creating Tennis Gamefeed object: {ex.Message}");
-                logger.Error(ex, $"{ex.GetType().Name} thrown when creating Tennis Gamefeed object: {ex.Message}");
+                logger.Error(ex, $"{ex.GetType().Name} thrown when creating Tennis Gamefeed object: {ex.Message + ex.InnerException.Message + ex.StackTrace}");
             }
             return null;
         }

@@ -60,7 +60,7 @@ namespace BroadcastScores
             if (String.IsNullOrWhiteSpace(NCAAFBTeamsAPI))
                 throw new ArgumentException("NCAAFB needs Teams API URL ", nameof(NCAAFBTeamsAPI));
 
-            GenerateNCAAFLookUps(null,null);
+            GenerateNCAAFLookUps(null, null);
             System.Timers.Timer aTimer = new System.Timers.Timer();
             aTimer.Elapsed += new System.Timers.ElapsedEventHandler(GenerateNCAAFLookUps);
             aTimer.Interval = (1000 * 60 * 720);  //Every 12 hours call funtion GenerateNCAAFLookUps locally
@@ -83,9 +83,9 @@ namespace BroadcastScores
                         }
                     }
                 }
-                catch(Exception ex)
+                catch (Exception ex)
                 {
-                    Console.WriteLine($"{ex.GetType().Name} thrown when fetching and creating NCAAF Score object: {ex.Message}");
+                    Console.WriteLine($"{ex.GetType().Name} thrown when fetching and creating NCAAF Score object: {ex.Message + ex.InnerException.Message + ex.StackTrace}");
                 }
                 System.Threading.Thread.Sleep(10000);
             }
@@ -93,22 +93,29 @@ namespace BroadcastScores
 
         public void GetTodaysGames()
         {
-            foreach (NCAAFGame game in GamesScheduleList)
+            try
             {
-                   if ((game.GameDate.Contains(DateTime.UtcNow.ToString("yyyy-MM-dd") + "T")))
+                if (GamesScheduleList != null)
+                    foreach (NCAAFGame game in GamesScheduleList)
                     {
-                        todaysGames.Add(
-                            new NCAAFGame
-                            {
-                                Home = game.Home,
-                                Away = game.Away,
-                                Week = game.Week,
-                                GameDate = game.GameDate
-                            });
+                        if ((game.GameDate.Contains(DateTime.UtcNow.ToString("yyyy-MM-dd") + "T")))
+                        {
+                            todaysGames.Add(
+                                new NCAAFGame
+                                {
+                                    Home = game.Home,
+                                    Away = game.Away,
+                                    Week = game.Week,
+                                    GameDate = game.GameDate
+                                });
+                        }
                     }
             }
-
-            Console.WriteLine(todaysGames.Count);
+            catch (Exception ex)
+            {
+                Console.WriteLine($"{ex.GetType().Name} thrown when getting todays NCAAFB Games : {ex.Message}");
+                logger.Error(ex, $"{ex.GetType().Name} thrown when getting todays NCAAFB Games : {ex.Message + ex.InnerException.Message + ex.StackTrace}");
+            }
         }
 
         public void FetchAndSendScores()
@@ -117,14 +124,26 @@ namespace BroadcastScores
 
             foreach (NCAAFGame gameDetails in todaysGames)
             {
-                NCAAFBScoreAPI = NCAAFBScoreAPI.Replace("{year}", DateTime.UtcNow.Year.ToString());
-                NCAAFBScoreAPI = NCAAFBScoreAPI.Replace("{week}", gameDetails.Week);
-                NCAAFBScoreAPI = NCAAFBScoreAPI.Replace("{home}", gameDetails.Home);
-                NCAAFBScoreAPI = NCAAFBScoreAPI.Replace("{away}", gameDetails.Away);
-                doc.Load(NCAAFBScoreAPI);
-                var eventID = EGSql.GetEventIDbyGameInfoAsync(new EGSqlQuery(SqlUrl), TeamNameList[gameDetails.Home], TeamNameList[gameDetails.Away], gameDetails.GameDate);
-                EventMessage msg = CreateCollegeFootballScoreMessage(doc.InnerXml, Convert.ToString(eventID));
-                objProcessSignalR.SendSignalRFeedtohub(msg);
+                String currentGameURL = NCAAFBScoreAPI;
+                currentGameURL = currentGameURL.Replace("{year}", DateTime.UtcNow.Year.ToString());
+                currentGameURL = currentGameURL.Replace("{week}", gameDetails.Week);
+                currentGameURL = currentGameURL.Replace("{home}", gameDetails.Away);
+                currentGameURL = currentGameURL.Replace("{away}", gameDetails.Home);
+                try
+                {
+                    doc.Load(currentGameURL);
+                    var eventID = EGSql.GetEventIDbyGameInfoAsync(new EGSqlQuery(SqlUrl), TeamNameList[gameDetails.Home], TeamNameList[gameDetails.Away], gameDetails.GameDate);
+                    EventMessage msg = CreateCollegeFootballScoreMessage(doc.InnerXml, Convert.ToString(eventID));
+                    if (msg != null)
+                    {
+                        objProcessSignalR.SendSignalRFeedtohub(msg);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"{ex.GetType().Name} - NCAAFB Score feed pulling from API : {ex.Message}");
+                    logger.Error(ex, $"{ex.GetType().Name} - NCAAFB Score feed pulling from API : {ex.Message + ex.InnerException.Message + ex.StackTrace}");
+                }
             }
 
         }
@@ -139,8 +158,17 @@ namespace BroadcastScores
 
                 if (!String.IsNullOrEmpty(XMLScorefeed))
                 {
+                    string gameStatus = doc.GetElementsByTagName("game").Item(0).Attributes["quarter"].Value;
+                    if (gameStatus.ToUpper() == "SCHEDULED")
+                    {
+                        return null;
+                    }
                     XmlNode homeScoreXml = doc.GetElementsByTagName("team").Item(0).FirstChild;
                     XmlNode awayScoreXml = doc.GetElementsByTagName("team").Item(1).FirstChild;
+                    if (homeScoreXml == null || awayScoreXml == null)
+                    {
+                        return null;
+                    }
 
                     List<Period> periodList = new List<Period>();
                     if (homeScoreXml.HasChildNodes && awayScoreXml.HasChildNodes)
@@ -163,16 +191,30 @@ namespace BroadcastScores
                         away_score = Convert.ToInt32(awayScoreXml.Attributes["points"].Value);
                     }
 
-                    if (periodList.Count == 0)
-                        periodList.Add(new Period
-                        {
-                            Name = Convert.ToString(1),
-                            Home = home_score,
-                            Visitor = away_score
-                        });
+                    //if (periodList.Count == 0)
+                    //    periodList.Add(new Period
+                    //    {
+                    //        Name = Convert.ToString(1),
+                    //        Home = home_score,
+                    //        Visitor = away_score
+                    //    });
 
 
-                    string gameStatus = doc.GetElementsByTagName("game").Item(0).Attributes["quarter"].Value;
+
+                    if (gameStatus == "1")
+                        gameStatus = "1st Quarter";
+                    else if (gameStatus == "2")
+                        gameStatus = "2nd Quarter";
+                    else if (gameStatus == "3")
+                        gameStatus = "3rd Quarter";
+                    else if (gameStatus == "4")
+                        gameStatus = "4th Quarter";
+                    else if (gameStatus == "5")
+                        gameStatus = "Overtime";
+                    else if (gameStatus == "6")
+                        gameStatus = "2nd Overtime";
+                    else if (gameStatus == "7")
+                        gameStatus = "Penalty Shoot Out";
 
 
 
@@ -188,7 +230,7 @@ namespace BroadcastScores
                             Status = ResponseStatus.OpSuccess,
                             Score = new Score
                             {
-                                CurrentPeriod = "Quarter" + gameStatus,
+                                CurrentPeriod = gameStatus,
                                 OrdinalPeriod = Convert.ToInt32(gameStatus),
                                 Time = null,
                                 Home = home_score,
@@ -203,7 +245,7 @@ namespace BroadcastScores
             catch (Exception ex)
             {
                 Console.WriteLine($"{ex.GetType().Name} thrown when creating Gamefeed object: {ex.Message}");
-                //logger.Error(ex, $"{ex.GetType().Name} thrown when creating Gamefeed object: {ex.Message}");
+                logger.Error(ex, $"{ex.GetType().Name} thrown when creating Gamefeed object:{ex.Message + ex.InnerException.Message + ex.StackTrace}");
             }
             return null;
         }
@@ -218,7 +260,8 @@ namespace BroadcastScores
         {
             GamesScheduleList.Clear();
             XmlDocument doc = new XmlDocument();
-            NCAAFBGamesScheduleAPI = NCAAFBGamesScheduleAPI.Replace("{year}", DateTime.UtcNow.Year.ToString());
+            string gamesScheduleAPI = NCAAFBGamesScheduleAPI;
+            gamesScheduleAPI = gamesScheduleAPI.Replace("{year}", DateTime.UtcNow.Year.ToString());
             doc.Load(NCAAFBGamesScheduleAPI);
             XmlNode nodeSeason = doc.GetElementsByTagName("season").Item(0);
 
@@ -248,17 +291,18 @@ namespace BroadcastScores
             TeamNameList.Clear();
             XmlDocument doc = new XmlDocument();
             doc.Load(NCAAFBTeamsAPI);
-            XmlNode nodeConference = doc.GetElementsByTagName("conference").Item(0);
+            XmlNode nodeDivision = doc.GetElementsByTagName("division").Item(0);
 
-            foreach (XmlNode xmlSubdivision in nodeConference)
-            {
-                foreach (XmlNode xmlTeam in xmlSubdivision)
+            foreach (XmlNode nodeConference in nodeDivision)
+                foreach (XmlNode xmlSubdivision in nodeConference)
                 {
-                    string teamID = xmlTeam.Attributes["id"].Value;
-                    string teamName = xmlTeam.Attributes["name"].Value;
-                    TeamNameList.Add(teamID, teamName);
+                    foreach (XmlNode xmlTeam in xmlSubdivision)
+                    {
+                        string teamID = xmlTeam.Attributes["id"].Value;
+                        string teamName = xmlTeam.Attributes["name"].Value;
+                        TeamNameList.Add(teamID, teamName);
+                    }
                 }
-            }
 
         }
 

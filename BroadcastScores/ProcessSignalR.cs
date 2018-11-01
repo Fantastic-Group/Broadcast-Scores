@@ -22,6 +22,8 @@ namespace BroadcastScores
         public static string hubUrl, salt, hub, method;
         static Logger logger = LogManager.GetCurrentClassLogger();
         static ScoreFeedsToDisk objFeedsToDisk = new ScoreFeedsToDisk();
+        HubConnection connection;
+        IHubProxy proxy;
 
         public ProcessSignalR()
         {
@@ -36,22 +38,31 @@ namespace BroadcastScores
             salt = signalRDetails[1];
             hub = signalRDetails[2];
             method = signalRDetails[3];
+
+            CreateSignalRConnectionandConnect();
+
+        }
+
+        public void CreateSignalRConnectionandConnect()
+        {
+            connection = new HubConnection(hubUrl);
+            connection.Error += Connection_Error;
+            connection.ConnectionSlow += Connection_ConnectionSlow;
+            connection.Closed += Connection_Closed;
+            proxy = connection.CreateHubProxy(hub);
+            connection.Start().Wait();
         }
 
         public void SendSignalRFeedtohub(EventMessage msg)
         {
             try
             {
-                HubConnection connection = new HubConnection(hubUrl);
-                connection.Error += Connection_Error;
-                connection.ConnectionSlow += Connection_ConnectionSlow;
-                connection.Closed += Connection_Closed;
-                IHubProxy proxy = connection.CreateHubProxy(hub);
-
-                connection.Start().Wait();
-
                 string serialised = JsonConvert.SerializeObject(msg.Value);
                 string authHash = $"{serialised}{salt}".ToSHA256();
+                if(connection.State.ToString().ToUpper()=="CLOSED")
+                {
+                    connection.Start().Wait();
+                }
 
                 var task = proxy.Invoke(method, authHash, msg.Value);
                 objFeedsToDisk.WritefeedToDisk(msg);
@@ -61,7 +72,7 @@ namespace BroadcastScores
             catch (Exception ex)
             {
                 Console.WriteLine($"{ex.GetType().Name} thrown when sending SignalR feed to Hub: {ex.Message}");
-                logger.Error(ex, $"{ex.GetType().Name} thrown when sending SignalR feed to Hub: {ex.Message}");
+                logger.Error(ex, $"{ex.GetType().Name} thrown when sending SignalR feed to Hub: {ex.Message + ex.InnerException.Message + ex.StackTrace}");
             }
 
         }

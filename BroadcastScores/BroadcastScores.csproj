@@ -72,8 +72,11 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="EGSql.cs" />
+    <Compile Include="NBA.cs" />
+    <Compile Include="NHL.cs" />
     <Compile Include="NCAAF.cs" />
     <Compile Include="NFL.cs" />
+    <Compile Include="NFLStream.cs" />
     <Compile Include="ProcessSignalR.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

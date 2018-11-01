@@ -1,0 +1,272 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Net.Http;
+using System.IO;
+using System.Xml;
+using System.Net;
+using System.Configuration;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using NLog;
+using System.Xml.Linq;
+
+using Miomni.SportsKit;
+using Miomni.MiddleKit;
+using Miomni.EventLib.Cache;
+using Miomni.Gaming.Relay.Responses;
+using Miomni.Gaming.Relay.Events;
+using EnterGamingRelay.APIModel;
+using EnterGamingRelay.EventModules;
+using EnterGamingRelay;
+
+namespace BroadcastScores
+{
+    class NHL
+    {
+        static Logger logger = LogManager.GetCurrentClassLogger();
+        ProcessSignalR objProcessSignalR = new ProcessSignalR();
+
+        static string SqlUrl { get; set; }
+        string NHLGamesScheduleAPI { get; set; }
+        string NHLScoreAPI { get; set; }
+        static List<NHLGame> todaysGames = new List<NHLGame>();
+
+
+        public NHL(string strNHLScoreAPI)
+        {
+            SqlUrl = ConfigurationManager.AppSettings["SqlUrl"];
+
+            NHLScoreAPI = strNHLScoreAPI;
+            NHLGamesScheduleAPI = ConfigurationManager.AppSettings["NHLGamesScheduleAPI"];
+
+
+            if (String.IsNullOrWhiteSpace(strNHLScoreAPI))
+                throw new ArgumentException("NHL needs Score API URL", nameof(strNHLScoreAPI));
+
+            if (String.IsNullOrWhiteSpace(SqlUrl))
+                throw new ArgumentException("NHL needs SqlUrl set to the base URL for the EG SQL service", nameof(SqlUrl));
+
+            if (String.IsNullOrWhiteSpace(NHLGamesScheduleAPI))
+                throw new ArgumentException("NHL needs GameSchedule API URL", nameof(NHLGamesScheduleAPI));
+
+
+        }
+
+        public async Task BuildNHLScores()
+        {
+            while (true)
+            {
+                try
+                {
+                    GetTodaysGames();
+
+                    if (todaysGames.Count > 0)
+                    {
+                        FetchAndSendScores();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"{ex.GetType().Name} thrown when fetching and creating NHL Score object: {ex.Message}");
+                }
+                System.Threading.Thread.Sleep(10000);
+            }
+        }
+
+        public void GetTodaysGames()
+        {
+            try
+            {
+            todaysGames.Clear();
+            XmlDocument doc = new XmlDocument();
+            string gameScheduleAPI = NHLGamesScheduleAPI;
+            gameScheduleAPI = gameScheduleAPI.Replace("{year}", DateTime.UtcNow.Year.ToString());
+            gameScheduleAPI = gameScheduleAPI.Replace("{month}", DateTime.UtcNow.Month.ToString());
+            gameScheduleAPI = gameScheduleAPI.Replace("{day}", DateTime.UtcNow.Day.ToString());
+            doc.Load(gameScheduleAPI);
+            XmlNode nodeGames = doc.GetElementsByTagName("games").Item(0);
+
+            if(nodeGames != null)
+            foreach (XmlNode xmlGame in nodeGames)
+            {
+                string gameStatus = xmlGame.Attributes["status"].Value;
+                if (gameStatus.ToUpper() != "CLOSED")
+                {
+                    todaysGames.Add(
+                        new NHLGame
+                        {
+                                //Home = xmlGame.Attributes["home"].Value,
+                                //Away = xmlGame.Attributes["away"].Value,
+                                GameID = xmlGame.Attributes["id"].Value,
+                            MatchID = xmlGame.Attributes["scheduled"].Value
+                        });
+                }
+            }
+
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"{ex.GetType().Name} thrown when getting todays NHL Games : {ex.Message}");
+                logger.Error(ex, $"{ex.GetType().Name} thrown when getting todays NHL Games : {ex.Message + ex.InnerException.Message + ex.StackTrace}");
+            }
+        }
+
+        public void FetchAndSendScores()
+        {
+            XmlDocument doc = new XmlDocument();
+
+            foreach (NHLGame gameDetails in todaysGames)
+            {
+                String currentGameURL = NHLScoreAPI;
+                currentGameURL = currentGameURL.Replace("{gameID}", gameDetails.GameID);
+                try
+                {
+                    doc.Load(currentGameURL);
+                    EventMessage msg = CreateNHLScoreMessage(doc.InnerXml);
+                    if (msg != null)
+                    {
+                        objProcessSignalR.SendSignalRFeedtohub(msg);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"{ex.GetType().Name} - NHL Score feed pulling from API : {ex.Message}");
+                    logger.Error(ex, $"{ex.GetType().Name} - NHL Score feed pulling from API : {ex.Message + ex.InnerException.Message + ex.StackTrace}");
+                }
+            }
+
+        }
+
+        public EventMessage CreateNHLScoreMessage(string XMLScorefeed)
+        {
+            try
+            {
+                XmlDocument doc = new XmlDocument();
+                doc.InnerXml = XMLScorefeed;
+
+
+                if (!String.IsNullOrEmpty(XMLScorefeed))
+                {
+                    XmlNode nodeGame = doc.GetElementsByTagName("game").Item(0);
+                    string gameStatus = nodeGame.Attributes["period"].Value;
+                    if (gameStatus.ToUpper() == "SCHEDULED")
+                    {
+                        return null;
+                    }
+                    XmlNode homeScoreXml = doc.GetElementsByTagName("team").Item(0).FirstChild;
+                    XmlNode awayScoreXml = doc.GetElementsByTagName("team").Item(1).FirstChild;
+                    if(homeScoreXml == null || awayScoreXml == null || nodeGame == null)
+                    {
+                        return null;
+                    }
+
+                    string matchID = nodeGame.Attributes["sr_id"].Value;
+                    matchID = matchID.Replace("sr:match:", "");
+                    string[] matchIDs = { matchID };
+                    var matchEventsTask = new EGSqlQuery(SqlUrl).MatchIDsToEventAsync(matchIDs);
+
+                    // Got those EventIDs yet?
+                    if (!matchEventsTask.IsCompleted)
+                        matchEventsTask.Wait();
+
+                    if (matchEventsTask.Result != null && matchEventsTask.Result.ContainsKey(Convert.ToInt32(matchID)))
+                    {
+                        int eventID = matchEventsTask.Result[Convert.ToInt32(matchID)];
+
+                        List<Period> periodList = new List<Period>();
+                        if (homeScoreXml.HasChildNodes && awayScoreXml.HasChildNodes)
+                            for (int i = 0; i < homeScoreXml.ChildNodes.Count; i++)
+                            {
+                                periodList.Add(new Period
+                                {
+                                    Name = Convert.ToString(i + 1),
+                                    Home = Convert.ToInt32(homeScoreXml.ChildNodes[i].Attributes["points"].Value),
+                                    Visitor = Convert.ToInt32(awayScoreXml.ChildNodes[i].Attributes["points"].Value),
+                                });
+                            }
+
+                        int home_score = 0;
+                        int away_score = 0;
+
+                        if (periodList != null)
+                        {
+                            home_score = Convert.ToInt32(doc.GetElementsByTagName("team").Item(0).Attributes["points"].Value);
+                            away_score = Convert.ToInt32(doc.GetElementsByTagName("team").Item(1).Attributes["points"].Value);
+                        }
+
+                        //if (periodList.Count == 0)
+                        //    periodList.Add(new Period
+                        //    {
+                        //        Name = Convert.ToString(1),
+                        //        Home = home_score,
+                        //        Visitor = away_score
+                        //    });
+
+
+
+
+                        if (gameStatus == "1")
+                            gameStatus = "1st Quarter";
+                        else if (gameStatus == "2")
+                            gameStatus = "2nd Quarter";
+                        else if (gameStatus == "3")
+                            gameStatus = "3rd Quarter";
+                        else if (gameStatus == "4")
+                            gameStatus = "4th Quarter";
+                        else if (gameStatus == "5")
+                            gameStatus = "5th Quarter";
+                        else if (gameStatus == "6")
+                            gameStatus = "6th Quarter";
+                        else if (gameStatus == "6")
+                            gameStatus = "7th Quarter";
+                        else if (gameStatus == "6")
+                            gameStatus = "8th Quarter";
+
+
+                        var scoreMsg = new EventMessage
+                        {
+                            Parent = null,
+                            Collected = DateTime.UtcNow,
+                            Dirty = true,
+                            Watch = System.Diagnostics.Stopwatch.StartNew(),
+                            Value = new EventStatusResponse
+                            {
+                                MiomniEventID = $"E-{eventID}",
+                                Status = ResponseStatus.OpSuccess,
+                                Score = new Score
+                                {
+                                    CurrentPeriod = gameStatus,
+                                    OrdinalPeriod = Convert.ToInt32(gameStatus),
+                                    Time = null,
+                                    Home = home_score,
+                                    Visitor = away_score,
+                                    Periods = periodList,
+                                }
+                            }
+                        };
+                        return scoreMsg;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"{ex.GetType().Name} thrown when creating Gamefeed object: {ex.Message}");
+                logger.Error(ex, $"{ex.GetType().Name} thrown when creating Gamefeed object: {ex.Message + ex.InnerException.Message + ex.StackTrace}");
+            }
+            return null;
+        }
+
+    }
+
+    class NHLGame
+    {
+        //public string Home { get; set; }
+        //public string Away { get; set; }
+        public string GameID { get; set; }
+        public string MatchID { get; set; }
+    }
+
+}

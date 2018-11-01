@@ -25,14 +25,14 @@ using EnterGamingRelay;
 
 namespace BroadcastScores
 {
-    // This is for NFL Clock Feeds
-    public class NFL
+    // This is for NFL Stream Feeds
+    public class NFLStream
     {
         static Logger logger = LogManager.GetCurrentClassLogger();
         public static string SqlUrl { get; set; }
-        public List<NFLGameScoreHistory> listNFlGameScoreHistory = new List<NFLGameScoreHistory>();
+        public List<NFLStreamGameScoreHistory> listNFlGameScoreHistory = new List<NFLStreamGameScoreHistory>();
 
-        public NFL()
+        public NFLStream()
         {
             SqlUrl = ConfigurationManager.AppSettings["SqlUrl"];
 
@@ -47,9 +47,9 @@ namespace BroadcastScores
             try
             {
 
-                NFLScore objNFLScore = JsonConvert.DeserializeObject<NFLScore>(JsonScorefeed);
+                NFLRootObject objNFLRoot = JsonConvert.DeserializeObject<NFLRootObject>(JsonScorefeed);
 
-                string matchID = objNFLScore.metadata.match;
+                string matchID = objNFLRoot.metadata.match;
                 matchID = matchID.Substring(matchID.IndexOf("sr:match:")).Replace("sr:match:", "");
 
                 string[] matchIDs = { matchID };
@@ -65,24 +65,24 @@ namespace BroadcastScores
 
                     List<Period> periodList = new List<Period>();
 
-                    int home_score = 0;
-                    int away_score = 0;
-
-                    home_score = Convert.ToInt32(objNFLScore.payload.score.home);
-                    away_score = Convert.ToInt32(objNFLScore.payload.score.away);
-
                     int ordinalPeriod;
-                    if (objNFLScore.payload.phase.Any(c => char.IsDigit(c)))
+                    if (objNFLRoot.payload.@event.score != null)
                     {
-                        ordinalPeriod = Convert.ToInt32(new string(objNFLScore.payload.phase.Where(Char.IsDigit).ToArray()));
+                        ordinalPeriod = Convert.ToInt32(objNFLRoot.payload.@event.score.sequence);
                     }
                     else
                     {
-                        ordinalPeriod = 0;
+                        return null;
                     }
 
+                    int home_score = 0;
+                    int away_score = 0;
 
-                    string gameStatus = objNFLScore.payload.phase;
+                    home_score = Convert.ToInt32(objNFLRoot.payload.@event.score.home_points);
+                    away_score = Convert.ToInt32(objNFLRoot.payload.@event.score.away_points);
+
+
+                    string gameStatus = "Quarter "+ ordinalPeriod;
                     gameStatus = PushGamesSignalRFeeds.ToSRScoreStatus.ContainsKey(gameStatus)
                                                                 ? PushGamesSignalRFeeds.ToSRScoreStatus[gameStatus]
                                                                 : PushGamesSignalRFeeds.CapitalizeFirstLetter(gameStatus.Replace("_", " "));
@@ -117,17 +117,23 @@ namespace BroadcastScores
                         else
                         {
                             listNFlGameScoreHistory.Add(
-                                new NFLGameScoreHistory
+                                new NFLStreamGameScoreHistory
                                 {
                                     eventID = eventID,
-                                    q1home = home_score,
-                                    q1away = away_score,
+                                    q1home = (ordinalPeriod == 1) ? home_score : 0,
+                                    q1away = (ordinalPeriod == 1) ? away_score : 0,
+                                    q2home = (ordinalPeriod == 2) ? home_score : 0,
+                                    q2away = (ordinalPeriod == 2) ? away_score : 0,
+                                    q3home = (ordinalPeriod == 3) ? home_score : 0,
+                                    q3away = (ordinalPeriod == 3) ? away_score : 0,
+                                    q4home = (ordinalPeriod == 4) ? home_score : 0,
+                                    q4away = (ordinalPeriod == 4) ? away_score : 0,
                                     createdDate = DateTime.UtcNow
                                 }
                             );
                         }
                     }
-                    // End : NFL Period Score History
+                    
                     var objScore = listNFlGameScoreHistory.FirstOrDefault(x => x.eventID == eventID);
                     if(ordinalPeriod == 1)
                     {
@@ -153,6 +159,7 @@ namespace BroadcastScores
                         periodList.Add(new Period { Name = Convert.ToString(3), Home = objScore.q3home, Visitor = objScore.q3away });
                         periodList.Add(new Period { Name = Convert.ToString(4), Home = objScore.q4home, Visitor = objScore.q4away });
                     }
+                    // End : NFL Period Score History
 
                     var scoreMsg = new EventMessage
                     {
@@ -176,7 +183,7 @@ namespace BroadcastScores
                         }
                     };
                     return scoreMsg;
-                }
+                } 
 
                 return null;
             }
@@ -191,56 +198,7 @@ namespace BroadcastScores
     }
 
 
-    class NFLScore
-    {
-        public payload payload { get; set; }
-        public string locale { get; set; }
-        public Metadata metadata { get; set; }
-    }
-
-    class payload
-    {
-        public string clock { get; set; }
-        public string possession { get; set; }
-        public string phase { get; set; }
-        public string down { get; set; }
-        public string yfd { get; set; }
-        public string location { get; set; }
-        public string source { get; set; }
-        public string play_review { get; set; }
-        public string play_clock { get; set; }
-        public string id { get; set; }
-        public string sr_id { get; set; }
-        public Team home { get; set; }
-        public Team away { get; set; }
-        public GameScore score { get; set; }
-    }
-
-    public class Team
-    {
-        public string alias { get; set; }
-        public string id { get; set; }
-        public string name { get; set; }
-        public string market { get; set; }
-        public string sr_id { get; set; }
-    }
-
-    public class Metadata
-    {
-        public string league { get; set; }
-        public string match { get; set; }
-        public string locale { get; set; }
-        public string operation { get; set; }
-        public string version { get; set; }
-    }
-
-    public class GameScore
-    {
-        public string home { get; set; }
-        public string away { get; set; }
-    }
-
-    public class NFLGameScoreHistory
+    public class NFLStreamGameScoreHistory
     {
         public int eventID { get; set; }
         public int q1home { get; set; }
@@ -254,7 +212,173 @@ namespace BroadcastScores
         public DateTime createdDate { get; set; }
     }
 
-    
+
+    public class NFLGame
+    {
+        public string id { get; set; }
+        public string status { get; set; }
+        public string reference { get; set; }
+        public int number { get; set; }
+        public DateTime scheduled { get; set; }
+        public int attendance { get; set; }
+        public int utc_offset { get; set; }
+        public string entry_mode { get; set; }
+        public string weather { get; set; }
+        public int quarter { get; set; }
+        public string clock { get; set; }
+        public string sr_id { get; set; }
+    }
+
+    public class NFLPossession
+    {
+        public string name { get; set; }
+        public string market { get; set; }
+        public string alias { get; set; }
+        public string reference { get; set; }
+        public string id { get; set; }
+        public string sr_id { get; set; }
+    }
+
+    public class NFLLocation
+    {
+        public string name { get; set; }
+        public string market { get; set; }
+        public string alias { get; set; }
+        public string reference { get; set; }
+        public string id { get; set; }
+        public int yardline { get; set; }
+        public string sr_id { get; set; }
+    }
+
+    public class NFLStartSituation
+    {
+        public string clock { get; set; }
+        public int down { get; set; }
+        public int yfd { get; set; }
+        public NFLPossession possession { get; set; }
+        public NFLLocation location { get; set; }
+    }
+
+    public class NFLPossession2
+    {
+        public string name { get; set; }
+        public string market { get; set; }
+        public string alias { get; set; }
+        public string reference { get; set; }
+        public string id { get; set; }
+        public string sr_id { get; set; }
+    }
+
+    public class NFLLocation2
+    {
+        public string name { get; set; }
+        public string market { get; set; }
+        public string alias { get; set; }
+        public string reference { get; set; }
+        public string id { get; set; }
+        public int yardline { get; set; }
+        public string sr_id { get; set; }
+    }
+
+    public class NFLEndSituation
+    {
+        public string clock { get; set; }
+        public int down { get; set; }
+        public int yfd { get; set; }
+        public NFLPossession2 possession { get; set; }
+        public NFLLocation2 location { get; set; }
+    }
+
+    public class NFLScoring
+    {
+        public int sequence { get; set; }
+        public string clock { get; set; }
+        public int points { get; set; }
+        public int home_points { get; set; }
+        public int away_points { get; set; }
+    }
+
+    public class NFLTeam
+    {
+        public string name { get; set; }
+        public string market { get; set; }
+        public string alias { get; set; }
+        public string reference { get; set; }
+        public string id { get; set; }
+        public string sr_id { get; set; }
+    }
+
+    public class NFLPlayer
+    {
+        public string name { get; set; }
+        public string jersey { get; set; }
+        public string reference { get; set; }
+        public string id { get; set; }
+        public string position { get; set; }
+        public string sr_id { get; set; }
+    }
+
+    public class NFLStatistic
+    {
+        public string stat_type { get; set; }
+        public int attempt { get; set; }
+        public int att_yards { get; set; }
+        public int yards { get; set; }
+        public int missed { get; set; }
+        public NFLTeam team { get; set; }
+        public NFLPlayer player { get; set; }
+    }
+
+    public class NFLEvent
+    {
+        public string type { get; set; }
+        public string id { get; set; }
+        public double sequence { get; set; }
+        public string reference { get; set; }
+        public string clock { get; set; }
+        public int home_points { get; set; }
+        public int away_points { get; set; }
+        public string play_type { get; set; }
+        public bool scoring_play { get; set; }
+        public int play_clock { get; set; }
+        public DateTime wall_clock { get; set; }
+        public bool fake_punt { get; set; }
+        public bool fake_field_goal { get; set; }
+        public bool screen_pass { get; set; }
+        public string description { get; set; }
+        public string alt_description { get; set; }
+        public NFLStartSituation start_situation { get; set; }
+        public NFLEndSituation end_situation { get; set; }
+        public NFLScoring score { get; set; }
+        public List<NFLStatistic> statistics { get; set; }
+    }
+
+    public class NFLPayload
+    {
+        public NFLGame game { get; set; }
+        public NFLEvent @event { get; set; }
+    }
+
+    public class NFLMetadata
+    {
+        public string league { get; set; }
+        public string match { get; set; }
+        public string status { get; set; }
+        public string event_type { get; set; }
+        public string event_category { get; set; }
+        public string locale { get; set; }
+        public string operation { get; set; }
+        public string version { get; set; }
+        public string team { get; set; }
+    }
+
+    public class NFLRootObject
+    {
+        public NFLPayload payload { get; set; }
+        public string locale { get; set; }
+        public NFLMetadata metadata { get; set; }
+    }
+
 
 
 }

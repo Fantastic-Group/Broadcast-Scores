@@ -31,15 +31,15 @@ namespace BroadcastScores
         static void Main(string[] args)
         {
             ProcessGameScores().Wait();
-            //NFLStream obj = new NFLStream();
-            //string s;
-            //using (StreamReader r = new StreamReader("d:\\a.json"))
-            //{
-            //    s = r.ReadToEnd();
-            //    obj.CreateNFLScoreMessage(s);
+            /*NFLStream obj = new NFLStream();
+            string s;
+            using (StreamReader r = new StreamReader("d:\\a.json"))
+            {
+                s = r.ReadToEnd();
+                obj.CreateNFLScoreMessage(s);
 
-            //}
-            
+            }*/
+
         }
 
         private static async Task ProcessGameScores()
@@ -57,16 +57,16 @@ namespace BroadcastScores
                 int i = 1;
                 foreach (string pullUrl in ScorePullUrls)
                 {
-                    tasks.Add(pushObj.GenerateScoresFeeds(pullUrl.Trim()));
                     Console.WriteLine(i + "): Score feeds started for : " + pullUrl);
                     logger.Info(i + "): Score feeds started for : " + pullUrl);
+                    tasks.Add(pushObj.GenerateScoresFeeds(pullUrl.Trim()));
                     i++;
                 }
                 await Task.WhenAll(tasks);
             }
             catch(Exception ex)
             {
-                logger.Error(ex, $"{ex.GetType().Name} thrown when running ProcessGameScores : {ex.Message}");
+                logger.Error(ex, $"{ex.GetType().Name} thrown when running ProcessGameScores : {ex.Message + ex.InnerException.Message + ex.StackTrace}");
             }
         }
 
