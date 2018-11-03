@@ -33,6 +33,7 @@ namespace BroadcastScores
         string GlobalIceHockeyGamesScheduleAPI { get; set; }
         string GlobalIceHockeyScoreAPI { get; set; }
         static List<GlobalIceHockeyGame> todaysGames = new List<GlobalIceHockeyGame>();
+        string APICallingCycleInterval { get; set; }
 
 
         public GlobalIceHockey(string strGlobalIceHockeyScoreAPI)
@@ -41,6 +42,10 @@ namespace BroadcastScores
 
             GlobalIceHockeyScoreAPI = strGlobalIceHockeyScoreAPI;
             GlobalIceHockeyGamesScheduleAPI = ConfigurationManager.AppSettings["GlobalIceHockeyGamesScheduleAPI"];
+
+            APICallingCycleInterval = ConfigurationManager.AppSettings["APICallingCycleInterval"];
+            if (String.IsNullOrEmpty(APICallingCycleInterval))
+                APICallingCycleInterval = "15000";
 
 
             if (String.IsNullOrWhiteSpace(strGlobalIceHockeyScoreAPI))
@@ -72,7 +77,7 @@ namespace BroadcastScores
                 {
                     Console.WriteLine($"{ex.GetType().Name} thrown when fetching and creating GlobalIceHockey Score object: {ex.Message}");
                 }
-                System.Threading.Thread.Sleep(10000);
+                System.Threading.Thread.Sleep(Convert.ToInt32(APICallingCycleInterval));
             }
         }
 

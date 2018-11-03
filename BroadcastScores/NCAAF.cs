@@ -34,9 +34,10 @@ namespace BroadcastScores
         string NCAAFBScoreAPI { get; set; }
         string NCAAFBTeamsAPI { get; set; }
         string NCAAFLookupDir { get; set; }
-        static List<NCAAFGame> GamesScheduleList = new List<NCAAFGame>();
+        //static List<NCAAFGame> GamesScheduleList = new List<NCAAFGame>();
         static List<NCAAFGame> todaysGames = new List<NCAAFGame>();
         static Dictionary<String, string> TeamNameList = new Dictionary<string, string>();
+        string APICallingCycleInterval { get; set; }
 
 
         public NCAAF(string strNCAAFBScoreAPI)
@@ -46,6 +47,10 @@ namespace BroadcastScores
             NCAAFBScoreAPI = strNCAAFBScoreAPI;
             NCAAFBGamesScheduleAPI = ConfigurationManager.AppSettings["NCAAFBGamesScheduleAPI"];
             NCAAFBTeamsAPI = ConfigurationManager.AppSettings["NCAAFBTeamsAPI"];
+
+            APICallingCycleInterval = ConfigurationManager.AppSettings["APICallingCycleInterval"];
+            if (String.IsNullOrEmpty(APICallingCycleInterval))
+                APICallingCycleInterval = "15000";
 
 
             if (String.IsNullOrWhiteSpace(strNCAAFBScoreAPI))
@@ -73,25 +78,26 @@ namespace BroadcastScores
             {
                 try
                 {
-                    if (GamesScheduleList.Count > 0)
-                    {
-                        GetTodaysGames();
+                    GetLiveGames();
+                    //if (GamesScheduleList.Count > 0)
+                    //{
+                        //GetTodaysGames();
 
                         if (todaysGames.Count > 0)
                         {
                             FetchAndSendScores();
                         }
-                    }
+                    //}
                 }
                 catch (Exception ex)
                 {
                     Console.WriteLine($"{ex.GetType().Name} thrown when fetching and creating NCAAF Score object: {ex.Message + ex.StackTrace}");
                 }
-                System.Threading.Thread.Sleep(10000);
+                System.Threading.Thread.Sleep(Convert.ToInt32(APICallingCycleInterval));
             }
         }
 
-        public void GetTodaysGames()
+        /*public void GetTodaysGames()
         {
             try
             {
@@ -119,7 +125,7 @@ namespace BroadcastScores
                 Console.WriteLine($"{ex.GetType().Name} thrown when getting todays NCAAFB Games : {ex.Message}");
                 logger.Error(ex, $"{ex.GetType().Name} thrown when getting todays NCAAFB Games : {ex.Message + ex.StackTrace}");
             }
-        }
+        }*/
 
         public void FetchAndSendScores()
         {
@@ -167,11 +173,11 @@ namespace BroadcastScores
             {
                 XmlDocument doc = new XmlDocument();
                 doc.InnerXml = XMLScorefeed;
-
+                XmlNode nodegame = doc.GetElementsByTagName("game").Item(0);
 
                 if (!String.IsNullOrEmpty(XMLScorefeed))
                 {
-                    string schDate = doc.GetElementsByTagName("game").Item(0).Attributes["scheduled"].Value;
+                    string schDate = nodegame.Attributes["scheduled"].Value;
                     if(schDate == null)
                     {
                         return null;
@@ -182,7 +188,11 @@ namespace BroadcastScores
                         if (Convert.ToDateTime(schDate).ToUniversalTime() > DateTime.UtcNow)
                             return null;
                     }
-                    string gameStatus = doc.GetElementsByTagName("game").Item(0).Attributes["quarter"].Value;
+
+                    if (nodegame.Attributes["quarter"] == null)
+                        return null;
+
+                    string gameStatus = nodegame.Attributes["quarter"].Value;
                     if (gameStatus == null)
                     {
                         return null;
@@ -281,11 +291,11 @@ namespace BroadcastScores
 
         public void GenerateNCAAFLookUps(object source, System.Timers.ElapsedEventArgs e)
         {
-            GenerateGamesScheduleLookup();
+            //GenerateGamesScheduleLookup();
             GenerateNCAAFTeamNamesLookup();
         }
 
-        public void GenerateGamesScheduleLookup()
+        /*public void GenerateGamesScheduleLookup()
         {
             GamesScheduleList.Clear();
             XmlDocument doc = new XmlDocument();
@@ -299,7 +309,7 @@ namespace BroadcastScores
                 foreach (XmlNode xmlGame in xmlWeek)
                 {
                     string gameStatus = xmlGame.Attributes["status"].Value;
-                    if (gameStatus.ToUpper() != "CLOSED")
+                    if (gameStatus.ToUpper() != "CLOSED" && gameStatus.ToUpper() != "INPROGRESS")
                     {
                         GamesScheduleList.Add(
                             new NCAAFGame
@@ -313,25 +323,83 @@ namespace BroadcastScores
                 }
             }
 
+        }*/
+
+        public void GetLiveGames()
+        {
+            try
+            {
+                todaysGames.Clear();
+                XmlDocument doc = new XmlDocument();
+                string gamesScheduleAPI = NCAAFBGamesScheduleAPI;
+                gamesScheduleAPI = gamesScheduleAPI.Replace("{year}", DateTime.UtcNow.Year.ToString());
+                doc.Load(gamesScheduleAPI);
+                XmlNode nodeSeason = doc.GetElementsByTagName("season").Item(0);
+
+                foreach (XmlNode xmlWeek in nodeSeason)
+                {
+                    foreach (XmlNode xmlGame in xmlWeek)
+                    {
+                        string gameStatus = xmlGame.Attributes["status"].Value;
+                        if (gameStatus.ToUpper() == "INPROGRESS")
+                        {
+                            todaysGames.Add(
+                                new NCAAFGame
+                                {
+                                    Home = xmlGame.Attributes["home"].Value,
+                                    Away = xmlGame.Attributes["away"].Value,
+                                    Week = xmlWeek.Attributes["week"].Value,
+                                    GameDate = xmlGame.Attributes["scheduled"].Value
+                                });
+                        }
+                    }
+                }
+            }
+            catch(Exception ex)
+            {
+                Console.WriteLine($"{ex.GetType().Name} thrown when fetching live games for NCAAFB : {ex.Message}");
+                logger.Error(ex, $"{ex.GetType().Name} thrown when fetching live games for NCAAFB :{ex.Message + ex.StackTrace}");
+            }
+
         }
 
         public void GenerateNCAAFTeamNamesLookup()
         {
-            TeamNameList.Clear();
-            XmlDocument doc = new XmlDocument();
-            doc.Load(NCAAFBTeamsAPI);
-            XmlNode nodeDivision = doc.GetElementsByTagName("division").Item(0);
+            try
+            {
+                TeamNameList.Clear();
+                XmlDocument doc = new XmlDocument();
+                doc.Load(NCAAFBTeamsAPI);
+                XmlNode nodeDivision = doc.GetElementsByTagName("division").Item(0);
 
-            foreach (XmlNode nodeConference in nodeDivision)
-                foreach (XmlNode xmlSubdivision in nodeConference)
+                foreach (XmlNode nodeConference in nodeDivision)
                 {
-                    foreach (XmlNode xmlTeam in xmlSubdivision)
+                    foreach (XmlNode xmlSubdivision in nodeConference)
                     {
-                        string teamID = xmlTeam.Attributes["id"].Value;
-                        string teamName = xmlTeam.Attributes["market"].Value;
-                        TeamNameList.Add(teamID, teamName);
+                        //If Conference node directlky contains Team instead of Subdivision
+                        if (xmlSubdivision.Name.ToUpper() == "TEAM")
+                        {
+                            string teamID = xmlSubdivision.Attributes["id"].Value;
+                            string teamName = xmlSubdivision.Attributes["market"].Value;
+                            TeamNameList.Add(teamID, teamName);
+                        }
+                        else
+                        {
+                            foreach (XmlNode xmlTeam in xmlSubdivision)
+                            {
+                                string teamID = xmlTeam.Attributes["id"].Value;
+                                string teamName = xmlTeam.Attributes["market"].Value;
+                                TeamNameList.Add(teamID, teamName);
+                            }
+                        }
                     }
                 }
+            }
+            catch(Exception ex)
+            {
+                Console.WriteLine($"{ex.GetType().Name} thrown when generating TeamNames lookup for NCAAFB : {ex.Message}");
+                logger.Error(ex, $"{ex.GetType().Name} thrown when generating TeamNames lookup for NCAAFB :{ex.Message + ex.StackTrace}");
+            }
 
         }
 

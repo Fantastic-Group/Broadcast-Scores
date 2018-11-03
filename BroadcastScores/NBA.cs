@@ -34,6 +34,7 @@ namespace BroadcastScores
         string NBAGamesScheduleAPI { get; set; }
         string NBAScoreAPI { get; set; }
         static List<NBAGame> todaysGames = new List<NBAGame>();
+        string APICallingCycleInterval { get; set; }
 
 
         public NBA(string strNBAScoreAPI)
@@ -42,6 +43,10 @@ namespace BroadcastScores
 
             NBAScoreAPI = strNBAScoreAPI;
             NBAGamesScheduleAPI = ConfigurationManager.AppSettings["NBAGamesScheduleAPI"];
+
+            APICallingCycleInterval = ConfigurationManager.AppSettings["APICallingCycleInterval"];
+            if (String.IsNullOrEmpty(APICallingCycleInterval))
+                APICallingCycleInterval = "15000";
 
 
             if (String.IsNullOrWhiteSpace(strNBAScoreAPI))
@@ -73,7 +78,7 @@ namespace BroadcastScores
                 {
                     Console.WriteLine($"{ex.GetType().Name} thrown when fetching and creating NBA Score object: {ex.Message}");
                 }
-                System.Threading.Thread.Sleep(10000);
+                System.Threading.Thread.Sleep(Convert.ToInt32(APICallingCycleInterval));
             }
         }
 

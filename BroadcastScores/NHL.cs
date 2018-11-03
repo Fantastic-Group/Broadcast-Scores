@@ -33,6 +33,7 @@ namespace BroadcastScores
         string NHLGamesScheduleAPI { get; set; }
         string NHLScoreAPI { get; set; }
         static List<NHLGame> todaysGames = new List<NHLGame>();
+        string APICallingCycleInterval { get; set; }
 
 
         public NHL(string strNHLScoreAPI)
@@ -42,6 +43,9 @@ namespace BroadcastScores
             NHLScoreAPI = strNHLScoreAPI;
             NHLGamesScheduleAPI = ConfigurationManager.AppSettings["NHLGamesScheduleAPI"];
 
+            APICallingCycleInterval = ConfigurationManager.AppSettings["APICallingCycleInterval"];
+            if (String.IsNullOrEmpty(APICallingCycleInterval))
+                APICallingCycleInterval = "15000";
 
             if (String.IsNullOrWhiteSpace(strNHLScoreAPI))
                 throw new ArgumentException("NHL needs Score API URL", nameof(strNHLScoreAPI));
@@ -72,7 +76,7 @@ namespace BroadcastScores
                 {
                     Console.WriteLine($"{ex.GetType().Name} thrown when fetching and creating NHL Score object: {ex.Message}");
                 }
-                System.Threading.Thread.Sleep(10000);
+                System.Threading.Thread.Sleep(Convert.ToInt32(APICallingCycleInterval));
             }
         }
 

@@ -45,12 +45,20 @@ namespace BroadcastScores
 
         public void CreateSignalRConnectionandConnect()
         {
-            connection = new HubConnection(hubUrl);
-            connection.Error += Connection_Error;
-            connection.ConnectionSlow += Connection_ConnectionSlow;
-            connection.Closed += Connection_Closed;
-            proxy = connection.CreateHubProxy(hub);
-            connection.Start().Wait();
+            try
+            {
+                connection = new HubConnection(hubUrl);
+                connection.Error += Connection_Error;
+                connection.ConnectionSlow += Connection_ConnectionSlow;
+                connection.Closed += Connection_Closed;
+                proxy = connection.CreateHubProxy(hub);
+                connection.Start().Wait();
+            }
+            catch(Exception ex)
+            {
+                Console.WriteLine($"{ex.GetType().Name} thrown when Creating SignalR connection to Hub: {ex.Message}");
+                logger.Error(ex, $"{ex.GetType().Name} thrown when Creating SignalR connection to Hub: {ex.Message + ex.StackTrace}");
+            }
         }
 
         public void SendSignalRFeedtohub(EventMessage msg, string Sport)

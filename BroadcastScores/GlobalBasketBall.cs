@@ -33,6 +33,7 @@ namespace BroadcastScores
         string GlobalBasketBallGamesScheduleAPI { get; set; }
         string GlobalBasketBallScoreAPI { get; set; }
         static List<GlobalBasketBallGame> todaysGames = new List<GlobalBasketBallGame>();
+        string APICallingCycleInterval { get; set; }
 
 
         public GlobalBasketBall(string strGlobalBasketBallScoreAPI)
@@ -41,6 +42,10 @@ namespace BroadcastScores
 
             GlobalBasketBallScoreAPI = strGlobalBasketBallScoreAPI;
             GlobalBasketBallGamesScheduleAPI = ConfigurationManager.AppSettings["GlobalBasketBallGamesScheduleAPI"];
+
+            APICallingCycleInterval = ConfigurationManager.AppSettings["APICallingCycleInterval"];
+            if (String.IsNullOrEmpty(APICallingCycleInterval))
+                APICallingCycleInterval = "15000";
 
 
             if (String.IsNullOrWhiteSpace(strGlobalBasketBallScoreAPI))
@@ -73,7 +78,7 @@ namespace BroadcastScores
                 {
                     Console.WriteLine($"{ex.GetType().Name} thrown when fetching and creating GlobalBasketBall Score object: {ex.Message}");
                 }
-                System.Threading.Thread.Sleep(10000);
+                System.Threading.Thread.Sleep(Convert.ToInt32(APICallingCycleInterval));
             }
         }
 
