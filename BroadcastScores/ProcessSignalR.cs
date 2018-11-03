@@ -62,13 +62,16 @@ namespace BroadcastScores
                 if (connection.State.ToString().ToUpper() == "DISCONNECTED")
                 {
                     connection.Start().Wait();
+                    //Some times proxy is not getting enabled to it throws error : connection was disconnected before invocation result was received
+                    // To avoid error added below wait
+                    System.Threading.Thread.Sleep(2000);
                 }
 
                 var task = proxy.Invoke(method, authHash, msg.Value);
                 objFeedsToDisk.WritefeedToDisk(msg);
                 task.Wait();
                 Console.WriteLine("Message Sent for "+ Sport);
-                connection.Stop();
+                //connection.Stop();
             }
             catch (Exception ex)
             {

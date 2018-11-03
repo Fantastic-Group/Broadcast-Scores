@@ -182,8 +182,8 @@ namespace BroadcastScores
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"{ex.GetType().Name} thrown when creating Gamefeed object: {ex.Message}");
-                logger.Error(ex, $"{ex.GetType().Name} thrown when creating Gamefeed object: {ex.Message +  ex.StackTrace}");
+                Console.WriteLine($"{ex.GetType().Name} thrown when creating NFL Gamefeed object: {ex.Message}");
+                logger.Error(ex, $"{ex.GetType().Name} thrown when creating NFL Gamefeed object: {ex.Message +  ex.StackTrace}");
             }
             return null;
         }

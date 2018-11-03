@@ -98,10 +98,8 @@ namespace BroadcastScores
                     todaysGames.Add(
                         new NHLGame
                         {
-                                //Home = xmlGame.Attributes["home"].Value,
-                                //Away = xmlGame.Attributes["away"].Value,
-                                GameID = xmlGame.Attributes["id"].Value,
-                            MatchID = xmlGame.Attributes["scheduled"].Value
+                            GameID = xmlGame.Attributes["id"].Value,
+                            MatchID = xmlGame.Attributes["sr_id"].Value
                         });
                 }
             }
@@ -124,11 +122,24 @@ namespace BroadcastScores
                 currentGameURL = currentGameURL.Replace("{gameID}", gameDetails.GameID);
                 try
                 {
-                    doc.Load(currentGameURL);
-                    EventMessage msg = CreateNHLScoreMessage(doc.InnerXml);
-                    if (msg != null)
+                    string matchID = gameDetails.MatchID;
+                    matchID = matchID.Replace("sr:match:", "");
+                    string[] matchIDs = { matchID };
+                    var matchEventsTask = new EGSqlQuery(SqlUrl).MatchIDsToEventAsync(matchIDs);
+
+                    // Got those EventIDs yet?
+                    if (!matchEventsTask.IsCompleted)
+                        matchEventsTask.Wait();
+
+                    if (matchEventsTask.Result != null && matchEventsTask.Result.ContainsKey(Convert.ToInt32(matchID)))
                     {
-                        objProcessSignalR.SendSignalRFeedtohub(msg, "NHL");
+                        int eventID = matchEventsTask.Result[Convert.ToInt32(matchID)];
+                        doc.Load(currentGameURL);
+                        EventMessage msg = CreateNHLScoreMessage(doc.InnerXml, eventID.ToString());
+                        if (msg != null)
+                        {
+                            objProcessSignalR.SendSignalRFeedtohub(msg, "NHL");
+                        }
                     }
                 }
                 catch (Exception ex)
@@ -140,7 +151,7 @@ namespace BroadcastScores
 
         }
 
-        public EventMessage CreateNHLScoreMessage(string XMLScorefeed)
+        public EventMessage CreateNHLScoreMessage(string XMLScorefeed, string eventID)
         {
             try
             {
@@ -163,19 +174,6 @@ namespace BroadcastScores
                         return null;
                     }
 
-                    string matchID = nodeGame.Attributes["sr_id"].Value;
-                    matchID = matchID.Replace("sr:match:", "");
-                    string[] matchIDs = { matchID };
-                    var matchEventsTask = new EGSqlQuery(SqlUrl).MatchIDsToEventAsync(matchIDs);
-
-                    // Got those EventIDs yet?
-                    if (!matchEventsTask.IsCompleted)
-                        matchEventsTask.Wait();
-
-                    if (matchEventsTask.Result != null && matchEventsTask.Result.ContainsKey(Convert.ToInt32(matchID)))
-                    {
-                        int eventID = matchEventsTask.Result[Convert.ToInt32(matchID)];
-
                         List<Period> periodList = new List<Period>();
                         if (homeScoreXml.HasChildNodes && awayScoreXml.HasChildNodes)
                             for (int i = 0; i < homeScoreXml.ChildNodes.Count; i++)
@@ -197,14 +195,6 @@ namespace BroadcastScores
                             away_score = Convert.ToInt32(doc.GetElementsByTagName("team").Item(1).Attributes["points"].Value);
                         }
 
-                        //if (periodList.Count == 0)
-                        //    periodList.Add(new Period
-                        //    {
-                        //        Name = Convert.ToString(1),
-                        //        Home = home_score,
-                        //        Visitor = away_score
-                        //    });
-
                         string ordinalPeriod = gameStatus;
                         if (gameStatus == "1")
                             gameStatus = "1st Period";
@@ -218,9 +208,9 @@ namespace BroadcastScores
                             gameStatus = "5th Period";
                         else if (gameStatus == "6")
                             gameStatus = "6th Period";
-                        else if (gameStatus == "6")
+                        else if (gameStatus == "7")
                             gameStatus = "7th Period";
-                        else if (gameStatus == "6")
+                        else if (gameStatus == "8")
                             gameStatus = "8th Period";
 
 
@@ -247,12 +237,11 @@ namespace BroadcastScores
                         };
                         return scoreMsg;
                     }
-                }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"{ex.GetType().Name} thrown when creating Gamefeed object: {ex.Message}");
-                logger.Error(ex, $"{ex.GetType().Name} thrown when creating Gamefeed object: {ex.Message +  ex.StackTrace}");
+                Console.WriteLine($"{ex.GetType().Name} thrown when creating NHL Gamefeed object: {ex.Message}");
+                logger.Error(ex, $"{ex.GetType().Name} thrown when creating NHL Gamefeed object: {ex.Message +  ex.StackTrace}");
             }
             return null;
         }
@@ -261,8 +250,6 @@ namespace BroadcastScores
 
     class NHLGame
     {
-        //public string Home { get; set; }
-        //public string Away { get; set; }
         public string GameID { get; set; }
         public string MatchID { get; set; }
     }

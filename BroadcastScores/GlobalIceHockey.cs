@@ -80,32 +80,32 @@ namespace BroadcastScores
         {
             try
             {
-            todaysGames.Clear();
-            XmlDocument doc = new XmlDocument();
-            string gameScheduleAPI = GlobalIceHockeyGamesScheduleAPI;
-            gameScheduleAPI = gameScheduleAPI.Replace("{date}", DateTime.UtcNow.ToString("yyyy-MM-dd"));
-            doc.Load(gameScheduleAPI);
-            XmlNode nodeGames = doc.GetElementsByTagName("schedule").Item(0);
+                todaysGames.Clear();
+                XmlDocument doc = new XmlDocument();
+                string gameScheduleAPI = GlobalIceHockeyGamesScheduleAPI;
+                gameScheduleAPI = gameScheduleAPI.Replace("{date}", DateTime.UtcNow.ToString("yyyy-MM-dd"));
+                doc.Load(gameScheduleAPI);
+                XmlNode nodeGames = doc.GetElementsByTagName("schedule").Item(0);
 
-            if(nodeGames != null)
-            foreach (XmlNode xmlGame in nodeGames)
-            {
-                string gameStatus = xmlGame.Attributes["status"].Value;
-                if (gameStatus.ToUpper() == "LIVE")
-                {
-                    todaysGames.Add(
-                        new GlobalIceHockeyGame
+                if (nodeGames != null)
+                    foreach (XmlNode xmlGame in nodeGames)
+                    {
+                        string gameStatus = xmlGame.Attributes["status"].Value;
+                        if (gameStatus.ToUpper() == "LIVE")
                         {
-                            MatchID = xmlGame.Attributes["id"].Value
-                        });
-                }
-            }
+                            todaysGames.Add(
+                                new GlobalIceHockeyGame
+                                {
+                                    MatchID = xmlGame.Attributes["id"].Value
+                                });
+                        }
+                    }
 
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"{ex.GetType().Name} thrown when getting todays GlobalIceHockey Games : {ex.Message}");
-                logger.Error(ex, $"{ex.GetType().Name} thrown when getting todays GlobalIceHockey Games : {ex.Message +  ex.StackTrace}");
+                logger.Error(ex, $"{ex.GetType().Name} thrown when getting todays GlobalIceHockey Games : {ex.Message + ex.StackTrace}");
             }
         }
 
@@ -119,23 +119,36 @@ namespace BroadcastScores
                 currentGameURL = currentGameURL.Replace("{matchID}", gameDetails.MatchID);
                 try
                 {
-                    doc.Load(currentGameURL);
-                    EventMessage msg = CreateGlobalIceHockeyScoreMessage(doc.InnerXml);
-                    if (msg != null)
+                    string matchID = gameDetails.MatchID;
+                    matchID = matchID.Replace("sr:match:", "");
+                    string[] matchIDs = { matchID };
+                    var matchEventsTask = new EGSqlQuery(SqlUrl).MatchIDsToEventAsync(matchIDs);
+
+                    // Got those EventIDs yet?
+                    if (!matchEventsTask.IsCompleted)
+                        matchEventsTask.Wait();
+
+                    if (matchEventsTask.Result != null && matchEventsTask.Result.ContainsKey(Convert.ToInt32(matchID)))
                     {
-                        objProcessSignalR.SendSignalRFeedtohub(msg, "Global Hockey");
+                        int eventID = matchEventsTask.Result[Convert.ToInt32(matchID)];
+                        doc.Load(currentGameURL);
+                        EventMessage msg = CreateGlobalIceHockeyScoreMessage(doc.InnerXml, Convert.ToString(eventID));
+                        if (msg != null)
+                        {
+                            objProcessSignalR.SendSignalRFeedtohub(msg, "Global Hockey");
+                        }
                     }
                 }
                 catch (Exception ex)
                 {
                     Console.WriteLine($"{ex.GetType().Name} - GlobalIceHockey Score feed pulling from API : {ex.Message}");
-                    logger.Error(ex, $"{ex.GetType().Name} - GlobalIceHockey Score feed pulling from API : {ex.Message +  ex.StackTrace}");
+                    logger.Error(ex, $"{ex.GetType().Name} - GlobalIceHockey Score feed pulling from API : {ex.Message + ex.StackTrace}");
                 }
             }
 
         }
 
-        public EventMessage CreateGlobalIceHockeyScoreMessage(string XMLScorefeed)
+        public EventMessage CreateGlobalIceHockeyScoreMessage(string XMLScorefeed, string eventID)
         {
             try
             {
@@ -149,89 +162,88 @@ namespace BroadcastScores
                     XmlNode nodeSportEventStatus = doc.GetElementsByTagName("sport_event_status").Item(0);
                     XmlNode nodeperiodScores = doc.GetElementsByTagName("period_scores").Item(0);
 
-                    string matchID = nodesport_event.Attributes["id"].Value;
-                    matchID = matchID.Replace("sr:match:", "");
-                    string[] matchIDs = { matchID };
-                    var matchEventsTask = new EGSqlQuery(SqlUrl).MatchIDsToEventAsync(matchIDs);
-
-                    // Got those EventIDs yet?
-                    if (!matchEventsTask.IsCompleted)
-                        matchEventsTask.Wait();
-
-                    if (matchEventsTask.Result != null && matchEventsTask.Result.ContainsKey(Convert.ToInt32(matchID)))
-                    {
-                        int eventID = matchEventsTask.Result[Convert.ToInt32(matchID)];
-
-                        List<Period> periodList = new List<Period>();
-                        if (nodeperiodScores.HasChildNodes)
-                            foreach (XmlNode x in nodeperiodScores.ChildNodes)
-                            {
-                                periodList.Add(new Period
-                                {
-                                    Name = x.Attributes["number"].Value,
-                                    Home = Convert.ToInt32(x.Attributes["home_score"].Value),
-                                    Visitor = Convert.ToInt32(x.Attributes["away_score"].Value),
-                                });
-                            }
-
-                        int home_score = 0;
-                        int away_score = 0;
-
-                        if (periodList != null)
+                    List<Period> periodList = new List<Period>();
+                    if(nodeperiodScores != null)
+                    if (nodeperiodScores.HasChildNodes)
+                        foreach (XmlNode x in nodeperiodScores.ChildNodes)
                         {
-                            home_score = Convert.ToInt32(nodeSportEventStatus.Attributes["home_score"].Value);
-                            away_score = Convert.ToInt32(nodeSportEventStatus.Attributes["away_score"].Value);
+                            periodList.Add(new Period
+                            {
+                                Name = x.Attributes["number"].Value,
+                                Home = Convert.ToInt32(x.Attributes["home_score"].Value),
+                                Visitor = Convert.ToInt32(x.Attributes["away_score"].Value),
+                            });
                         }
 
-                        string gameStatus = nodeSportEventStatus.Attributes["status"].Value;
-                        string ordinalPeriod = gameStatus;
-                        if (gameStatus == "1")
-                            gameStatus = "1st Period";
-                        else if (gameStatus == "2")
-                            gameStatus = "2nd Period";
-                        else if (gameStatus == "3")
-                            gameStatus = "3rd Period";
-                        else if (gameStatus == "4")
-                            gameStatus = "4th Period";
-                        else if (gameStatus == "5")
-                            gameStatus = "5th Period";
-                        else if (gameStatus == "6")
-                            gameStatus = "6th Period";
-                        else if (gameStatus == "6")
-                            gameStatus = "7th Period";
-                        else if (gameStatus == "6")
-                            gameStatus = "8th Period";
+                    int home_score = 0;
+                    int away_score = 0;
 
-
-                        var scoreMsg = new EventMessage
-                        {
-                            Parent = null,
-                            Collected = DateTime.UtcNow,
-                            Dirty = true,
-                            Watch = System.Diagnostics.Stopwatch.StartNew(),
-                            Value = new EventStatusResponse
-                            {
-                                MiomniEventID = $"E-{eventID}",
-                                Status = ResponseStatus.OpSuccess,
-                                Score = new Score
-                                {
-                                    CurrentPeriod = gameStatus,
-                                    OrdinalPeriod = Convert.ToInt32(gameStatus),
-                                    Time = null,
-                                    Home = home_score,
-                                    Visitor = away_score,
-                                    Periods = periodList,
-                                }
-                            }
-                        };
-                        return scoreMsg;
+                    if (periodList != null)
+                    {
+                        home_score = Convert.ToInt32(nodeSportEventStatus.Attributes["home_score"].Value);
+                        away_score = Convert.ToInt32(nodeSportEventStatus.Attributes["away_score"].Value);
                     }
+
+                    string gameStatus = nodeSportEventStatus.Attributes["match_status"].Value;
+                    if(gameStatus.ToUpper() == "ENDED")
+                    {
+                        return null;
+                    }
+
+                        periodList.Add(new Period
+                        {
+                            Name = Convert.ToString(periodList.Count + 1),
+                            Home = home_score - periodList.Sum(x=>x.Home),
+                            Visitor = away_score - periodList.Sum(x => x.Visitor),
+                        });
+
+                    string ordinalPeriod = Convert.ToString(periodList.Count());
+                     if (ordinalPeriod == "1")
+                         gameStatus = "1st Period";
+                     else if (ordinalPeriod == "2")
+                         gameStatus = "2nd Period";
+                     else if (ordinalPeriod == "3")
+                         gameStatus = "3rd Period";
+                     else if (ordinalPeriod == "4")
+                         gameStatus = "4th Period";
+                     else if (ordinalPeriod == "5")
+                         gameStatus = "5th Period";
+                     else if (ordinalPeriod == "6")
+                         gameStatus = "6th Period";
+                     else if (ordinalPeriod == "7")
+                         gameStatus = "7th Period";
+                     else if (ordinalPeriod == "8")
+                         gameStatus = "8th Period";
+
+
+                    var scoreMsg = new EventMessage
+                    {
+                        Parent = null,
+                        Collected = DateTime.UtcNow,
+                        Dirty = true,
+                        Watch = System.Diagnostics.Stopwatch.StartNew(),
+                        Value = new EventStatusResponse
+                        {
+                            MiomniEventID = $"E-{eventID}",
+                            Status = ResponseStatus.OpSuccess,
+                            Score = new Score
+                            {
+                                CurrentPeriod = gameStatus,
+                                OrdinalPeriod = Convert.ToInt32(ordinalPeriod),
+                                Time = null,
+                                Home = home_score,
+                                Visitor = away_score,
+                                Periods = periodList,
+                            }
+                        }
+                    };
+                    return scoreMsg;
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"{ex.GetType().Name} thrown when creating Gamefeed object: {ex.Message}");
-                logger.Error(ex, $"{ex.GetType().Name} thrown when creating Gamefeed object: {ex.Message +  ex.StackTrace}");
+                Console.WriteLine($"{ex.GetType().Name} thrown when creating Global Ice Hockey Gamefeed object: {ex.Message}");
+                logger.Error(ex, $"{ex.GetType().Name} thrown when creating Global Ice Hockey Gamefeed object: {ex.Message + ex.StackTrace}");
             }
             return null;
         }
@@ -242,5 +254,5 @@ namespace BroadcastScores
     {
         public string MatchID { get; set; }
     }
-    
+
 }

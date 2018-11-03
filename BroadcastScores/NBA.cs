@@ -95,13 +95,13 @@ namespace BroadcastScores
                     foreach (XmlNode xmlGame in nodeGames)
                     {
                         string gameStatus = xmlGame.Attributes["status"].Value;
-                        if (gameStatus.ToUpper() != "CLOSED" || gameStatus.ToUpper() != "SCHEDULED")
+                        if (gameStatus.ToUpper() != "CLOSED" && gameStatus.ToUpper() != "SCHEDULED")
                         {
                             todaysGames.Add(
                                 new NBAGame
                                 {
                                     GameID = xmlGame.Attributes["id"].Value,
-                                    MatchID = xmlGame.Attributes["scheduled"].Value
+                                    MatchID = xmlGame.Attributes["sr_id"].Value
                                 });
                         }
                     }
@@ -123,24 +123,24 @@ namespace BroadcastScores
                 currentGameURL = currentGameURL.Replace("{gameID}", gameDetails.GameID);
                 try
                 {
-                    doc.Load(currentGameURL);
-                    EventMessage msg = CreateNBAScoreMessage(doc.InnerXml, gameDetails.MatchID);
+                    string matchID = gameDetails.MatchID.Replace("sr:match:", "");
+                    string[] matchIDs = { matchID };
+                    var matchEventsTask = new EGSqlQuery(SqlUrl).MatchIDsToEventAsync(matchIDs);
 
-                    //-------------------------------------------
-                    //XDocument doc1 = new XDocument();
-                    //var request = (HttpWebRequest)WebRequest.Create(currentGameURL);
-                    //request.UserAgent = ("User-Agent: Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; WOW64; Trident/5.0) Gecko/20100101 Firefox/25.0");
-                    //using (var response = request.GetResponse())
-                    //using (var stream = response.GetResponseStream())
-                    //{
-                    //    doc1 = XDocument.Load(stream);
-                    //}
-                    //EventMessage msg = CreateNBAScoreMessage(doc1.ToString());
-                    //-------------------------------------------
+                    // Got those EventIDs yet?
+                    if (!matchEventsTask.IsCompleted)
+                        matchEventsTask.Wait();
 
-                    if (msg != null)
+                    if (matchEventsTask.Result != null && matchEventsTask.Result.ContainsKey(Convert.ToInt32(matchID)))
                     {
-                        objProcessSignalR.SendSignalRFeedtohub(msg, "NBA");
+                        int eventID = matchEventsTask.Result[Convert.ToInt32(matchID)];
+                        doc.Load(currentGameURL);
+                        EventMessage msg = CreateNBAScoreMessage(doc.InnerXml, Convert.ToString(eventID));
+
+                        if (msg != null)
+                        {
+                            objProcessSignalR.SendSignalRFeedtohub(msg, "NBA");
+                        }
                     }
                 }
                 catch (Exception ex)
@@ -152,7 +152,7 @@ namespace BroadcastScores
 
         }
 
-        public EventMessage CreateNBAScoreMessage(string XMLScorefeed, string matchID)
+        public EventMessage CreateNBAScoreMessage(string XMLScorefeed, string eventID)
         {
             try
             {
@@ -164,7 +164,7 @@ namespace BroadcastScores
                 {
                     XmlNode nodeGame = doc.GetElementsByTagName("game").Item(0);
 
-                    string gameStatus = nodeGame.Attributes["status"].Value;
+                    string gameStatus = nodeGame.Attributes["quarter"].Value;
                     if (gameStatus.ToUpper() == "SCHEDULED")
                     {
                         return null;
@@ -175,18 +175,6 @@ namespace BroadcastScores
                     {
                         return null;
                     }
-
-                    matchID = matchID.Replace("sr:match:", "");
-                    string[] matchIDs = { matchID };
-                    var matchEventsTask = new EGSqlQuery(SqlUrl).MatchIDsToEventAsync(matchIDs);
-
-                    // Got those EventIDs yet?
-                    if (!matchEventsTask.IsCompleted)
-                        matchEventsTask.Wait();
-
-                    if (matchEventsTask.Result != null && matchEventsTask.Result.ContainsKey(Convert.ToInt32(matchID)))
-                    {
-                        int eventID = matchEventsTask.Result[Convert.ToInt32(matchID)];
 
                         List<Period> periodList = new List<Period>();
                         if (homeScoreXml.HasChildNodes && awayScoreXml.HasChildNodes)
@@ -255,12 +243,11 @@ namespace BroadcastScores
                         };
                         return scoreMsg;
                     }
-                }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"{ex.GetType().Name} thrown when creating Gamefeed object: {ex.Message}");
-                logger.Error(ex, $"{ex.GetType().Name} thrown when creating Gamefeed object: {ex.Message + ex.StackTrace}");
+                Console.WriteLine($"{ex.GetType().Name} thrown when creating NBA Gamefeed object: {ex.Message}");
+                logger.Error(ex, $"{ex.GetType().Name} thrown when creating NBA Gamefeed object: {ex.Message + ex.StackTrace}");
             }
             return null;
         }

@@ -249,8 +249,8 @@ namespace BroadcastScores
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"{ex.GetType().Name} thrown when creating Gamefeed object: {ex.Message}");
-                logger.Error(ex, $"{ex.GetType().Name} thrown when creating Gamefeed object: {ex.Message +  ex.StackTrace}");
+                Console.WriteLine($"{ex.GetType().Name} PushGameSignalRfeeds CreateGamesScoreMessage : thrown when creating Gamefeed object: {ex.Message}");
+                logger.Error(ex, $"{ex.GetType().Name} PushGameSignalRfeeds CreateGamesScoreMessage :thrown when creating Gamefeed object: {ex.Message +  ex.StackTrace}");
             }
             return null;
         }
@@ -358,8 +358,6 @@ namespace BroadcastScores
             { "4th_quarter" , "4th Quarter" },
             { "halftime" , "Halftime pause" },
         };
-
-     
 
     }
 }
