@@ -78,6 +78,7 @@ namespace BroadcastScores
             {
                 try
                 {
+                    await Task.Factory.StartNew(() => System.Threading.Thread.Sleep(100));
                     GetLiveGames();
                     //if (GamesScheduleList.Count > 0)
                     //{
@@ -85,7 +86,7 @@ namespace BroadcastScores
 
                         if (todaysGames.Count > 0)
                         {
-                            FetchAndSendScores();
+                            await FetchAndSendScores();
                         }
                     //}
                 }
@@ -127,7 +128,7 @@ namespace BroadcastScores
             }
         }*/
 
-        public void FetchAndSendScores()
+        public async Task FetchAndSendScores()
         {
             XmlDocument doc = new XmlDocument();
 
@@ -145,7 +146,7 @@ namespace BroadcastScores
                         var eventIDTask = new EGSqlQuery(SqlUrl).GetEventIDbyGameInfoAsync(TeamNameList[gameDetails.Home], TeamNameList[gameDetails.Away], gameDetails.GameDate);
 
                         if (!eventIDTask.IsCompleted)
-                            eventIDTask.Wait();
+                            await eventIDTask;
 
                         if (eventIDTask.Result != null)
                         {

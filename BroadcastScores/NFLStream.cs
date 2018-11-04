@@ -31,13 +31,18 @@ namespace BroadcastScores
         static Logger logger = LogManager.GetCurrentClassLogger();
         public static string SqlUrl { get; set; }
         public List<NFLStreamGameScoreHistory> listNFlGameScoreHistory = new List<NFLStreamGameScoreHistory>();
+        string NFLBoxScoreAPI { get; set; }
 
         public NFLStream()
         {
             SqlUrl = ConfigurationManager.AppSettings["SqlUrl"];
+            NFLBoxScoreAPI = ConfigurationManager.AppSettings["NFLBoxScoreAPI"];
 
             if (String.IsNullOrWhiteSpace(SqlUrl))
-                throw new ArgumentException("EGSportRadarCollegeToEventstatus needs SqlUrl set to the base URL for the EG SQL service", nameof(SqlUrl));
+                throw new ArgumentException("NFL needs SqlUrl set to the base URL for the EG SQL service", nameof(SqlUrl));
+
+            if (String.IsNullOrWhiteSpace(NFLBoxScoreAPI))
+                throw new ArgumentException("NFL needs NFLBoxScoreAPI url to fetch box scores", nameof(NFLBoxScoreAPI));
 
         }
 
@@ -235,6 +240,126 @@ namespace BroadcastScores
             }
             return null;
         }
+
+
+        public EventMessage CreateNFLScoreMessageByBoxScoreAPI(string JsonScorefeed)
+        {
+            try
+            {
+                NFLRootObject objNFLRoot = JsonConvert.DeserializeObject<NFLRootObject>(JsonScorefeed);
+
+                string matchID = objNFLRoot.metadata.match;
+                matchID = matchID.Substring(matchID.IndexOf("sr:match:")).Replace("sr:match:", "");
+
+                string[] matchIDs = { matchID };
+                var matchEventsTask = new EGSqlQuery(SqlUrl).MatchIDsToEventAsync(matchIDs);
+
+                // Got those EventIDs yet?
+                if (!matchEventsTask.IsCompleted)
+                    matchEventsTask.Wait();
+
+                if (matchEventsTask.Result != null && matchEventsTask.Result.ContainsKey(Convert.ToInt32(matchID)))
+                {
+                    int eventID = matchEventsTask.Result[Convert.ToInt32(matchID)];
+
+                    List<Period> periodList = new List<Period>();
+
+
+                    XmlDocument doc = new XmlDocument();
+                    string boxScoreAPI = NFLBoxScoreAPI;
+                    boxScoreAPI = boxScoreAPI.Replace("{gameID}", objNFLRoot.payload.game.id);
+                    doc.Load(boxScoreAPI);
+                    
+
+
+                    int home_score = 0;
+                    int away_score = 0;
+                    //home_score = Convert.ToInt32(objNFLRoot.payload.@event.home_points);
+                    //away_score = Convert.ToInt32(objNFLRoot.payload.@event.away_points);
+
+
+                    XmlNode nodeScoring = doc.GetElementsByTagName("scoring").Item(0);
+                    if (nodeScoring.HasChildNodes)
+                        foreach (XmlNode x in nodeScoring)
+                        {
+                            periodList.Add(new Period
+                            {
+                                Name = x.Attributes["number"].Value,
+                                Home = Convert.ToInt32(x.Attributes["home_points"].Value),
+                                Visitor = Convert.ToInt32(x.Attributes["away_points"].Value),
+                            });
+                        }
+
+
+                    home_score = periodList.Sum(x => x.Home).Value;
+                    away_score = periodList.Sum(x => x.Visitor).Value;
+
+
+                    int ordinalPeriod = objNFLRoot.payload.game.quarter;
+                    string gameStatus = "";
+                    if (ordinalPeriod == 1)
+                    {
+                        gameStatus = "1st Quarter ";
+                    }
+                    else if (ordinalPeriod == 2)
+                    {
+                        gameStatus = "2nd Quarter ";
+                    }
+                    else if (ordinalPeriod == 3)
+                    {
+                        gameStatus = "3rd Quarter ";
+                    }
+                    else if (ordinalPeriod == 4)
+                    {
+                        gameStatus = "4th Quarter ";
+                    }
+                    else if (ordinalPeriod == 5)
+                    {
+                        gameStatus = "Overtime";
+                    }
+                    else if (ordinalPeriod == 6)
+                    {
+                        gameStatus = "2nd Overtime";
+                    }
+                    else if (ordinalPeriod == 7)
+                    {
+                        gameStatus = "3rd Overtime ";
+                    }
+
+                    var scoreMsg = new EventMessage
+                    {
+                        Parent = null,
+                        Collected = DateTime.UtcNow,
+                        Dirty = true,
+                        Watch = System.Diagnostics.Stopwatch.StartNew(),
+                        Value = new EventStatusResponse
+                        {
+                            MiomniEventID = $"E-{eventID}",
+                            Status = ResponseStatus.OpSuccess,
+                            Score = new Score
+                            {
+                                CurrentPeriod = gameStatus,
+                                OrdinalPeriod = Convert.ToInt32(ordinalPeriod),
+                                Time = null,
+                                Home = home_score,
+                                Visitor = away_score,
+                                Periods = periodList,
+                            }
+                        }
+                    };
+                    return scoreMsg;
+                }
+
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"{ex.GetType().Name} thrown when creating Gamefeed object: {ex.Message}");
+                logger.Error(ex, $"{ex.GetType().Name} thrown when creating Gamefeed object: {ex.Message + ex.StackTrace}");
+            }
+            return null;
+        }
+
 
     }
 

@@ -30,7 +30,7 @@ namespace BroadcastScores
             SendSignalR = ConfigurationManager.AppSettings["SendSignalR"];
 
             if (String.IsNullOrWhiteSpace(SendSignalR))
-                throw new ArgumentException("EGSportRadarCollegeToEventstatus needs SendSignalR set to fetch feeds", nameof(SendSignalR));
+                throw new ArgumentException("Needs SendSignalR hub details to send feeds", nameof(SendSignalR));
 
             string[] signalRDetails = SendSignalR.Split(',');
 
@@ -72,7 +72,7 @@ namespace BroadcastScores
                     connection.Start().Wait();
                     //Some times proxy is not getting enabled to it throws error : connection was disconnected before invocation result was received
                     // To avoid error added below wait
-                    System.Threading.Thread.Sleep(2000);
+                    System.Threading.Thread.Sleep(5000);
                 }
 
                 var task = proxy.Invoke(method, authHash, msg.Value);

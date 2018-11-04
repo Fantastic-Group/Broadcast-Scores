@@ -67,6 +67,7 @@ namespace BroadcastScores
             {
                 try
                 {
+                    await Task.Factory.StartNew(() => System.Threading.Thread.Sleep(100));
                     GetTodaysGames();
 
                     if (todaysGames.Count > 0)

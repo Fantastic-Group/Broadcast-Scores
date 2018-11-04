@@ -45,13 +45,13 @@ namespace BroadcastScores
             SendSignalR = ConfigurationManager.AppSettings["SendSignalR"];
 
             if (String.IsNullOrWhiteSpace(SqlUrl))
-                throw new ArgumentException("EGSportRadarCollegeToEventstatus needs SqlUrl set to the base URL for the EG SQL service", nameof(SqlUrl));
+                throw new ArgumentException("Needs SqlUrl set to the base URL for the EG SQL service", nameof(SqlUrl));
 
             if (String.IsNullOrWhiteSpace(SRScorePullUrlList))
-                throw new ArgumentException("EGSportRadarCollegeToEventstatus needs SRScorePullUrlList to fetch Games Score feeds", nameof(SRScorePullUrlList));
+                throw new ArgumentException("Needs SRScorePullUrl List to fetch Games Score feeds", nameof(SRScorePullUrlList));
 
             if (String.IsNullOrWhiteSpace(SendSignalR))
-                throw new ArgumentException("EGSportRadarCollegeToEventstatus needs SendSignalR set to fetch feeds", nameof(SendSignalR));
+                throw new ArgumentException("Needs SendSignalR hub details to send feeds", nameof(SendSignalR));
 
             string[] signalRDetails = SendSignalR.Split(',');
 
@@ -105,11 +105,16 @@ namespace BroadcastScores
                                         if (urlScorePull.ToUpper().Contains("NFL"))
                                         {
                                             if (!String.IsNullOrEmpty(data))
-                                                msgScore = objNFL.CreateNFLScoreMessage(data);
-
+                                            {
+                                                if(!data.Contains("heartbeat"))
+                                                msgScore = objNFL.CreateNFLScoreMessageByBoxScoreAPI(data);
+                                            }
                                             if (msgScore != null)
                                             {
-                                                objProcessSignalR.SendSignalRFeedtohub(msgScore,"NFL");
+                                                if (msgScore.Value != null)
+                                                {
+                                                    objProcessSignalR.SendSignalRFeedtohub(msgScore, "NFL");
+                                                }
                                             }
                                         }
                                         else if (data.StartsWith("<root"))
@@ -120,12 +125,14 @@ namespace BroadcastScores
                                                 {
                                                     msgScore = CreateTennisScoreMessage(data);
                                                     if (msgScore != null)
+                                                        if (msgScore.Value != null)
                                                         objProcessSignalR.SendSignalRFeedtohub(msgScore,"Tennis");
                                                 }
                                                 else if (urlScorePull.ToUpper().Contains("SOCCER"))
                                                 {
                                                     msgScore = CreateGamesScoreMessage(data);
                                                     if (msgScore != null)
+                                                        if (msgScore.Value != null)
                                                         objProcessSignalR.SendSignalRFeedtohub(msgScore,"Soccer");
                                                 }
                                             }

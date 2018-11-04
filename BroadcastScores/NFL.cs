@@ -37,7 +37,7 @@ namespace BroadcastScores
             SqlUrl = ConfigurationManager.AppSettings["SqlUrl"];
 
             if (String.IsNullOrWhiteSpace(SqlUrl))
-                throw new ArgumentException("EGSportRadarCollegeToEventstatus needs SqlUrl set to the base URL for the EG SQL service", nameof(SqlUrl));
+                throw new ArgumentException("NFL needs SqlUrl set to the base URL for the EG SQL service", nameof(SqlUrl));
 
         }
 

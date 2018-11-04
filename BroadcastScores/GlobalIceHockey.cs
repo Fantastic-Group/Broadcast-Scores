@@ -66,11 +66,12 @@ namespace BroadcastScores
             {
                 try
                 {
+                    await Task.Factory.StartNew(() => System.Threading.Thread.Sleep(100));
                     GetTodaysGames();
 
                     if (todaysGames.Count > 0)
                     {
-                        FetchAndSendScores();
+                        await FetchAndSendScores();
                     }
                 }
                 catch (Exception ex)
@@ -114,7 +115,7 @@ namespace BroadcastScores
             }
         }
 
-        public void FetchAndSendScores()
+        public async Task FetchAndSendScores()
         {
             XmlDocument doc = new XmlDocument();
 
@@ -131,7 +132,7 @@ namespace BroadcastScores
 
                     // Got those EventIDs yet?
                     if (!matchEventsTask.IsCompleted)
-                        matchEventsTask.Wait();
+                        await matchEventsTask;
 
                     if (matchEventsTask.Result != null && matchEventsTask.Result.ContainsKey(Convert.ToInt32(matchID)))
                     {
