@@ -18,46 +18,50 @@ namespace BroadcastScores
     public class ProcessSignalR
     {
 
-        public static string SendSignalR { get; set; }
+        public static string SignalUrls { get; set; }
         public static string hubUrl, salt, hub, method;
         static Logger logger = LogManager.GetCurrentClassLogger();
         static ScoreFeedsToDisk objFeedsToDisk = new ScoreFeedsToDisk();
-        HubConnection connection;
-        IHubProxy proxy;
+        List<HubNProxy> connectionList = new List<HubNProxy>();
 
         public ProcessSignalR()
         {
-            SendSignalR = ConfigurationManager.AppSettings["SendSignalR"];
+            SignalUrls = ConfigurationManager.AppSettings["SignalUrls"];
+            salt = ConfigurationManager.AppSettings["SignalRSalt"];
+            hub = ConfigurationManager.AppSettings["SignalRHub"];
+            method = ConfigurationManager.AppSettings["SignalRMethod"];
 
-            if (String.IsNullOrWhiteSpace(SendSignalR))
-                throw new ArgumentException("Needs SendSignalR hub details to send feeds", nameof(SendSignalR));
+            if (String.IsNullOrWhiteSpace(SignalUrls))
+                throw new ArgumentException("Needs SendSignalR urls to send feeds", nameof(SendSignalR));
 
-            string[] signalRDetails = SendSignalR.Split(',');
-
-            hubUrl = signalRDetails[0];
-            salt = signalRDetails[1];
-            hub = signalRDetails[2];
-            method = signalRDetails[3];
-
-            CreateSignalRConnectionandConnect();
+            string[] signalRurl = SignalUrls.Split(',');
+            foreach (string hubUrl in signalRurl)
+            {
+                CreateSignalRConnectionandConnect(hubUrl);
+            }
 
         }
 
-        public void CreateSignalRConnectionandConnect()
+        public void CreateSignalRConnectionandConnect(string hubConnectionURL)
         {
             try
             {
-                connection = new HubConnection(hubUrl);
+                HubConnection connection;
+                IHubProxy proxy;
+                connection = new HubConnection(hubConnectionURL);
                 connection.Error += Connection_Error;
                 connection.ConnectionSlow += Connection_ConnectionSlow;
                 connection.Closed += Connection_Closed;
                 proxy = connection.CreateHubProxy(hub);
                 connection.Start().Wait();
+
+                connectionList.Add(new HubNProxy { proxy = proxy, connection = connection });
+                Console.WriteLine("SignalR Connection created for " +hubConnectionURL);
             }
             catch(Exception ex)
             {
-                Console.WriteLine($"{ex.GetType().Name} thrown when Creating SignalR connection to Hub: {ex.Message}");
-                logger.Error(ex, $"{ex.GetType().Name} thrown when Creating SignalR connection to Hub: {ex.Message + ex.StackTrace}");
+                Console.WriteLine($"{ex.GetType().Name} thrown when Creating SignalR connection to Hub : {hubConnectionURL + " , " + ex.Message}");
+                logger.Error(ex, $"{ex.GetType().Name} thrown when Creating SignalR connection to Hub: {hubConnectionURL + " , " + ex.Message + ex.StackTrace}");
             }
         }
 
@@ -67,18 +71,22 @@ namespace BroadcastScores
             {
                 string serialised = JsonConvert.SerializeObject(msg.Value);
                 string authHash = $"{serialised}{salt}".ToSHA256();
-                if (connection.State.ToString().ToUpper() == "DISCONNECTED")
+                foreach (HubNProxy hubNProxy in connectionList)
                 {
-                    connection.Start().Wait();
-                    //Some times proxy is not getting enabled to it throws error : connection was disconnected before invocation result was received
-                    // To avoid error added below wait
-                    System.Threading.Thread.Sleep(5000);
-                }
+                    if (hubNProxy.connection.State.ToString().ToUpper() == "DISCONNECTED")
+                    {
+                        Console.WriteLine("Reconnecting to " + hubNProxy.connection.Url);
+                        hubNProxy.connection.Start().Wait();
+                        //Some times proxy is not getting enabled to it throws error : connection was disconnected before invocation result was received
+                        // To avoid error added below wait
+                        System.Threading.Thread.Sleep(5000);
+                    }
 
-                var task = proxy.Invoke(method, authHash, msg.Value);
+                    var task = hubNProxy.proxy.Invoke(method, authHash, msg.Value);
+                    task.Wait();
+                    Console.WriteLine("Message Sent for " + Sport + " to " + hubNProxy.connection.Url);
+                }
                 objFeedsToDisk.WritefeedToDisk(msg);
-                task.Wait();
-                Console.WriteLine("Message Sent for "+ Sport);
                 //connection.Stop();
             }
             catch (Exception ex)
@@ -105,6 +113,11 @@ namespace BroadcastScores
             logger.Error($"{obj.GetType().Name} thrown on SignalR connection: {obj.Message}");
         }
 
+        class HubNProxy
+        {
+            public HubConnection connection;
+            public IHubProxy proxy;
+        }
 
     }
 }

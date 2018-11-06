@@ -27,7 +27,7 @@ namespace BroadcastScores
     class NCAAF
     {
         static Logger logger = LogManager.GetCurrentClassLogger();
-        ProcessSignalR objProcessSignalR = new ProcessSignalR();
+        ProcessSignalR objProcessSignalR;
 
         static string SqlUrl { get; set; }
         string NCAAFBGamesScheduleAPI { get; set; }
@@ -38,10 +38,12 @@ namespace BroadcastScores
         static List<NCAAFGame> todaysGames = new List<NCAAFGame>();
         static Dictionary<String, string> TeamNameList = new Dictionary<string, string>();
         string APICallingCycleInterval { get; set; }
+        string APICallingCycleIntervalIfGameNotLive { get; set; }
 
 
-        public NCAAF(string strNCAAFBScoreAPI)
+        public NCAAF(string strNCAAFBScoreAPI , ProcessSignalR processSignalR)
         {
+            objProcessSignalR = processSignalR;
             SqlUrl = ConfigurationManager.AppSettings["SqlUrl"];
 
             NCAAFBScoreAPI = strNCAAFBScoreAPI;
@@ -49,8 +51,7 @@ namespace BroadcastScores
             NCAAFBTeamsAPI = ConfigurationManager.AppSettings["NCAAFBTeamsAPI"];
 
             APICallingCycleInterval = ConfigurationManager.AppSettings["APICallingCycleInterval"];
-            if (String.IsNullOrEmpty(APICallingCycleInterval))
-                APICallingCycleInterval = "15000";
+            APICallingCycleIntervalIfGameNotLive = ConfigurationManager.AppSettings["APICallingCycleIntervalIfGameNotLive"];
 
 
             if (String.IsNullOrWhiteSpace(strNCAAFBScoreAPI))
@@ -65,10 +66,13 @@ namespace BroadcastScores
             if (String.IsNullOrWhiteSpace(NCAAFBTeamsAPI))
                 throw new ArgumentException("NCAAFB needs Teams API URL ", nameof(NCAAFBTeamsAPI));
 
+            if (String.IsNullOrWhiteSpace(APICallingCycleInterval))
+                throw new ArgumentException("Needs APICallingCycleInterval ", nameof(APICallingCycleInterval));
+
             GenerateNCAAFLookUps(null, null);
             System.Timers.Timer aTimer = new System.Timers.Timer();
             aTimer.Elapsed += new System.Timers.ElapsedEventHandler(GenerateNCAAFLookUps);
-            aTimer.Interval = (1000 * 60 * 60);  //Every 1 hours call funtion GenerateNCAAFLookUps locally
+            aTimer.Interval = (1000 * 60 * 360);  //Every 6 hours call funtion GenerateNCAAFLookUps locally
             aTimer.Enabled = true;
         }
 
@@ -94,7 +98,15 @@ namespace BroadcastScores
                 {
                     Console.WriteLine($"{ex.GetType().Name} thrown when fetching and creating NCAAF Score object: {ex.Message + ex.StackTrace}");
                 }
-                System.Threading.Thread.Sleep(Convert.ToInt32(APICallingCycleInterval));
+
+                if (todaysGames.Count > 0) //if any game is live Api calling cycle interval will be less otherwise more to avoid frequent polling
+                {
+                    System.Threading.Thread.Sleep(Convert.ToInt32(APICallingCycleInterval));
+                }
+                else
+                {
+                    System.Threading.Thread.Sleep(Convert.ToInt32(APICallingCycleIntervalIfGameNotLive));
+                }
             }
         }
 

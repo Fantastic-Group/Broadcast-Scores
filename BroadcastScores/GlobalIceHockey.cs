@@ -27,25 +27,26 @@ namespace BroadcastScores
     class GlobalIceHockey
     {
         static Logger logger = LogManager.GetCurrentClassLogger();
-        ProcessSignalR objProcessSignalR = new ProcessSignalR();
+        ProcessSignalR objProcessSignalR;
 
         static string SqlUrl { get; set; }
         string GlobalIceHockeyGamesScheduleAPI { get; set; }
         string GlobalIceHockeyScoreAPI { get; set; }
         static List<GlobalIceHockeyGame> todaysGames = new List<GlobalIceHockeyGame>();
         string APICallingCycleInterval { get; set; }
+        string APICallingCycleIntervalIfGameNotLive { get; set; }
 
 
-        public GlobalIceHockey(string strGlobalIceHockeyScoreAPI)
+        public GlobalIceHockey(string strGlobalIceHockeyScoreAPI, ProcessSignalR processSignalR)
         {
+            objProcessSignalR = processSignalR;
             SqlUrl = ConfigurationManager.AppSettings["SqlUrl"];
 
             GlobalIceHockeyScoreAPI = strGlobalIceHockeyScoreAPI;
             GlobalIceHockeyGamesScheduleAPI = ConfigurationManager.AppSettings["GlobalIceHockeyGamesScheduleAPI"];
 
             APICallingCycleInterval = ConfigurationManager.AppSettings["APICallingCycleInterval"];
-            if (String.IsNullOrEmpty(APICallingCycleInterval))
-                APICallingCycleInterval = "15000";
+            APICallingCycleIntervalIfGameNotLive = ConfigurationManager.AppSettings["APICallingCycleIntervalIfGameNotLive"];
 
 
             if (String.IsNullOrWhiteSpace(strGlobalIceHockeyScoreAPI))
@@ -56,6 +57,9 @@ namespace BroadcastScores
 
             if (String.IsNullOrWhiteSpace(GlobalIceHockeyGamesScheduleAPI))
                 throw new ArgumentException("GlobalIceHockey needs GameSchedule API URL", nameof(GlobalIceHockeyGamesScheduleAPI));
+
+            if (String.IsNullOrWhiteSpace(APICallingCycleInterval))
+                throw new ArgumentException("Needs APICallingCycleInterval ", nameof(APICallingCycleInterval));
 
 
         }
@@ -78,10 +82,19 @@ namespace BroadcastScores
                 {
                     Console.WriteLine($"{ex.GetType().Name} thrown when fetching and creating GlobalIceHockey Score object: {ex.Message}");
                 }
-                System.Threading.Thread.Sleep(Convert.ToInt32(APICallingCycleInterval));
+
+                if (todaysGames.Count > 0) //if any game is live Api calling cycle interval will be less otherwise more to avoid frequent polling
+                {
+                    System.Threading.Thread.Sleep(Convert.ToInt32(APICallingCycleInterval));
+                }
+                else
+                {
+                    System.Threading.Thread.Sleep(Convert.ToInt32(APICallingCycleIntervalIfGameNotLive));
+                }
             }
         }
 
+        // Get live games
         public void GetTodaysGames()
         {
             try

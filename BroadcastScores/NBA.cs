@@ -28,25 +28,26 @@ namespace BroadcastScores
     class NBA
     {
         static Logger logger = LogManager.GetCurrentClassLogger();
-        ProcessSignalR objProcessSignalR = new ProcessSignalR();
+        ProcessSignalR objProcessSignalR;
 
         static string SqlUrl { get; set; }
         string NBAGamesScheduleAPI { get; set; }
         string NBAScoreAPI { get; set; }
         static List<NBAGame> todaysGames = new List<NBAGame>();
         string APICallingCycleInterval { get; set; }
+        string APICallingCycleIntervalIfGameNotLive { get; set; }
 
 
-        public NBA(string strNBAScoreAPI)
+        public NBA(string strNBAScoreAPI, ProcessSignalR processSignalR)
         {
+            objProcessSignalR = processSignalR;
             SqlUrl = ConfigurationManager.AppSettings["SqlUrl"];
 
             NBAScoreAPI = strNBAScoreAPI;
             NBAGamesScheduleAPI = ConfigurationManager.AppSettings["NBAGamesScheduleAPI"];
 
             APICallingCycleInterval = ConfigurationManager.AppSettings["APICallingCycleInterval"];
-            if (String.IsNullOrEmpty(APICallingCycleInterval))
-                APICallingCycleInterval = "15000";
+            APICallingCycleIntervalIfGameNotLive = ConfigurationManager.AppSettings["APICallingCycleIntervalIfGameNotLive"];
 
 
             if (String.IsNullOrWhiteSpace(strNBAScoreAPI))
@@ -57,6 +58,9 @@ namespace BroadcastScores
 
             if (String.IsNullOrWhiteSpace(NBAGamesScheduleAPI))
                 throw new ArgumentException("NBA needs GameSchedule API URL", nameof(NBAGamesScheduleAPI));
+
+            if (String.IsNullOrWhiteSpace(APICallingCycleInterval))
+                throw new ArgumentException("Needs APICallingCycleInterval ", nameof(APICallingCycleInterval));
 
 
         }
@@ -79,10 +83,19 @@ namespace BroadcastScores
                 {
                     Console.WriteLine($"{ex.GetType().Name} thrown when fetching and creating NBA Score object: {ex.Message}");
                 }
-                System.Threading.Thread.Sleep(Convert.ToInt32(APICallingCycleInterval));
+
+                if (todaysGames.Count > 0) //if any game is live Api calling cycle interval will be less otherwise more to avoid frequent polling
+                {
+                    System.Threading.Thread.Sleep(Convert.ToInt32(APICallingCycleInterval));
+                }
+                else
+                {
+                    System.Threading.Thread.Sleep(Convert.ToInt32(APICallingCycleIntervalIfGameNotLive));
+                }
             }
         }
 
+        // Get live games
         public void GetTodaysGames()
         {
             try

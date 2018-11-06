@@ -32,7 +32,6 @@ namespace BroadcastScores
         public static string SqlUrl { get; set; }
         public static string SRScorePullUrlList { get; set; }
         public static string SendSignalR { get; set; }
-        public static string hubUrl, salt, hub, method;
         static Logger logger = LogManager.GetCurrentClassLogger();
         ProcessSignalR objProcessSignalR = new ProcessSignalR();
         NFLStream objNFL = new NFLStream();
@@ -42,23 +41,12 @@ namespace BroadcastScores
         {
             SqlUrl = ConfigurationManager.AppSettings["SqlUrl"];
             SRScorePullUrlList = ConfigurationManager.AppSettings["SRScorePullUrlList"];
-            SendSignalR = ConfigurationManager.AppSettings["SendSignalR"];
 
             if (String.IsNullOrWhiteSpace(SqlUrl))
                 throw new ArgumentException("Needs SqlUrl set to the base URL for the EG SQL service", nameof(SqlUrl));
 
             if (String.IsNullOrWhiteSpace(SRScorePullUrlList))
                 throw new ArgumentException("Needs SRScorePullUrl List to fetch Games Score feeds", nameof(SRScorePullUrlList));
-
-            if (String.IsNullOrWhiteSpace(SendSignalR))
-                throw new ArgumentException("Needs SendSignalR hub details to send feeds", nameof(SendSignalR));
-
-            string[] signalRDetails = SendSignalR.Split(',');
-
-            hubUrl = signalRDetails[0];
-            salt = signalRDetails[1];
-            hub = signalRDetails[2];
-            method = signalRDetails[3];
 
         }
 
@@ -69,22 +57,22 @@ namespace BroadcastScores
                 //For NCAAF API
                 if (urlScorePull.ToUpper().Contains("NCAAF"))
                 {
-                    NCAAF objNCAAF = new NCAAF(urlScorePull);
+                    NCAAF objNCAAF = new NCAAF(urlScorePull, objProcessSignalR);
                     await objNCAAF.BuildNCAAFScores();
                 }
                 else if (urlScorePull.ToUpper().Contains("NHL"))
                 {
-                    NHL objNHL = new NHL(urlScorePull);
+                    NHL objNHL = new NHL(urlScorePull, objProcessSignalR);
                     await objNHL.BuildNHLScores();
                 }
                 else if (urlScorePull.ToUpper().Contains("NBA"))
                 {
-                    NBA objNBA = new NBA(urlScorePull);
+                    NBA objNBA = new NBA(urlScorePull, objProcessSignalR);
                     await objNBA.BuildNBAScores();
                 }
                 else if (urlScorePull.ToUpper().Contains("HOCKEY") && urlScorePull.ToUpper().Contains("ICE"))
                 {
-                    GlobalIceHockey objGlobalIceHockey = new GlobalIceHockey(urlScorePull);
+                    GlobalIceHockey objGlobalIceHockey = new GlobalIceHockey(urlScorePull, objProcessSignalR);
                     await objGlobalIceHockey.BuildGlobalIceHockeyScores();
                 }
                 else // For all Push feeds

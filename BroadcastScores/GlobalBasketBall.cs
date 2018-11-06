@@ -34,6 +34,7 @@ namespace BroadcastScores
         string GlobalBasketBallScoreAPI { get; set; }
         static List<GlobalBasketBallGame> todaysGames = new List<GlobalBasketBallGame>();
         string APICallingCycleInterval { get; set; }
+        string APICallingCycleIntervalIfGameNotLive { get; set; }
 
 
         public GlobalBasketBall(string strGlobalBasketBallScoreAPI)
@@ -44,8 +45,7 @@ namespace BroadcastScores
             GlobalBasketBallGamesScheduleAPI = ConfigurationManager.AppSettings["GlobalBasketBallGamesScheduleAPI"];
 
             APICallingCycleInterval = ConfigurationManager.AppSettings["APICallingCycleInterval"];
-            if (String.IsNullOrEmpty(APICallingCycleInterval))
-                APICallingCycleInterval = "15000";
+            APICallingCycleIntervalIfGameNotLive = ConfigurationManager.AppSettings["APICallingCycleIntervalIfGameNotLive"];
 
 
             if (String.IsNullOrWhiteSpace(strGlobalBasketBallScoreAPI))
@@ -57,6 +57,11 @@ namespace BroadcastScores
             if (String.IsNullOrWhiteSpace(GlobalBasketBallGamesScheduleAPI))
                 throw new ArgumentException("GlobalBasketBall needs GameSchedule API URL", nameof(GlobalBasketBallGamesScheduleAPI));
 
+            if (String.IsNullOrWhiteSpace(APICallingCycleInterval))
+                throw new ArgumentException("Needs APICallingCycleInterval ", nameof(APICallingCycleInterval));
+
+            if (String.IsNullOrWhiteSpace(APICallingCycleInterval))
+                throw new ArgumentException("Needs APICallingCycleInterval ", nameof(APICallingCycleInterval));
 
         }
 
@@ -68,7 +73,7 @@ namespace BroadcastScores
                 try
                 {
                     await Task.Factory.StartNew(() => System.Threading.Thread.Sleep(2000));
-                    GetTodaysGames();
+                    GetLiveGames();
 
                     if (todaysGames.Count > 0)
                     {
@@ -79,11 +84,21 @@ namespace BroadcastScores
                 {
                     Console.WriteLine($"{ex.GetType().Name} thrown when fetching and creating GlobalBasketBall Score object: {ex.Message}");
                 }
-                System.Threading.Thread.Sleep(Convert.ToInt32(APICallingCycleInterval));
+                
+
+                if(todaysGames.Count > 0) //if any game is live Api calling cycle interval will be less otherwise more to avoid frequent polling
+                {
+                    System.Threading.Thread.Sleep(Convert.ToInt32(APICallingCycleInterval));
+                }
+                else
+                {
+                    System.Threading.Thread.Sleep(Convert.ToInt32(APICallingCycleIntervalIfGameNotLive));
+                }
             }
         }
 
-        public void GetTodaysGames()
+        // Get live games
+        public void GetLiveGames()
         {
             try
             {
