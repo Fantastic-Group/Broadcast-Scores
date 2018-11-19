@@ -38,8 +38,6 @@ namespace BroadcastScores
             SqlUrl = ConfigurationManager.AppSettings["SqlUrl"];
             NFLBoxScoreAPI = ConfigurationManager.AppSettings["NFLBoxScoreAPI"];
 
-            if (String.IsNullOrWhiteSpace(SqlUrl))
-                throw new ArgumentException("NFL needs SqlUrl set to the base URL for the EG SQL service", nameof(SqlUrl));
 
             if (String.IsNullOrWhiteSpace(NFLBoxScoreAPI))
                 throw new ArgumentException("NFL needs NFLBoxScoreAPI url to fetch box scores", nameof(NFLBoxScoreAPI));

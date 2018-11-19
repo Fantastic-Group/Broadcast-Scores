@@ -77,6 +77,7 @@
     <Compile Include="NBA.cs" />
     <Compile Include="GlobalIceHockey.cs" />
     <Compile Include="NFLStream.cs" />
+    <Compile Include="NCAAMB.cs" />
     <Compile Include="NHL.cs" />
     <Compile Include="NCAAF.cs" />
     <Compile Include="NFL.cs" />

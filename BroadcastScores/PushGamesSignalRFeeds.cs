@@ -33,6 +33,8 @@ namespace BroadcastScores
         public static string SRScorePullUrlList { get; set; }
         public static string SendSignalR { get; set; }
         static Logger logger = LogManager.GetCurrentClassLogger();
+        string APICallingCycleInterval { get; set; }
+        string APICallingCycleIntervalIfGameNotLive { get; set; }
         ProcessSignalR objProcessSignalR = new ProcessSignalR();
         NFLStream objNFL = new NFLStream();
 
@@ -42,11 +44,20 @@ namespace BroadcastScores
             SqlUrl = ConfigurationManager.AppSettings["SqlUrl"];
             SRScorePullUrlList = ConfigurationManager.AppSettings["SRScorePullUrlList"];
 
+            APICallingCycleInterval = ConfigurationManager.AppSettings["APICallingCycleInterval"];
+            APICallingCycleIntervalIfGameNotLive = ConfigurationManager.AppSettings["APICallingCycleIntervalIfGameNotLive"];
+
             if (String.IsNullOrWhiteSpace(SqlUrl))
                 throw new ArgumentException("Needs SqlUrl set to the base URL for the EG SQL service", nameof(SqlUrl));
 
             if (String.IsNullOrWhiteSpace(SRScorePullUrlList))
                 throw new ArgumentException("Needs SRScorePullUrl List to fetch Games Score feeds", nameof(SRScorePullUrlList));
+
+            if (String.IsNullOrWhiteSpace(APICallingCycleInterval))
+                throw new ArgumentException("Needs APICallingCycleInterval ", nameof(APICallingCycleInterval));
+
+            if (String.IsNullOrWhiteSpace(APICallingCycleInterval))
+                throw new ArgumentException("Needs APICallingCycleInterval ", nameof(APICallingCycleInterval));
 
         }
 
@@ -74,6 +85,16 @@ namespace BroadcastScores
                 {
                     GlobalIceHockey objGlobalIceHockey = new GlobalIceHockey(urlScorePull, objProcessSignalR);
                     await objGlobalIceHockey.BuildGlobalIceHockeyScores();
+                }
+                else if (urlScorePull.ToUpper().Contains("BASKETBALL"))
+                {
+                    GlobalBasketBall objGlobalBasketBall = new GlobalBasketBall(urlScorePull, objProcessSignalR);
+                    await objGlobalBasketBall.BuildGlobalBasketBallScores();
+                }
+                else if (urlScorePull.ToUpper().Contains("NCAAMB"))
+                {
+                    NCAAMB objNCAAMB = new NCAAMB(urlScorePull, objProcessSignalR);
+                    await objNCAAMB.BuildNCAAMBScores();
                 }
                 else // For all Push feeds
                 {

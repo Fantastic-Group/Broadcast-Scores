@@ -31,6 +31,7 @@ namespace BroadcastScores
 
         static string SqlUrl { get; set; }
         string NCAAFBGamesScheduleAPI { get; set; }
+        string NCAAFBDivisions { get; set; }
         string NCAAFBScoreAPI { get; set; }
         string NCAAFBTeamsAPI { get; set; }
         string NCAAFLookupDir { get; set; }
@@ -47,6 +48,7 @@ namespace BroadcastScores
             SqlUrl = ConfigurationManager.AppSettings["SqlUrl"];
 
             NCAAFBScoreAPI = strNCAAFBScoreAPI;
+            NCAAFBDivisions = ConfigurationManager.AppSettings["NCAAFBDivisions"];
             NCAAFBGamesScheduleAPI = ConfigurationManager.AppSettings["NCAAFBGamesScheduleAPI"];
             NCAAFBTeamsAPI = ConfigurationManager.AppSettings["NCAAFBTeamsAPI"];
 
@@ -57,22 +59,21 @@ namespace BroadcastScores
             if (String.IsNullOrWhiteSpace(strNCAAFBScoreAPI))
                 throw new ArgumentException("NCAAFB needs Score API URL", nameof(NCAAFBScoreAPI));
 
-            if (String.IsNullOrWhiteSpace(SqlUrl))
-                throw new ArgumentException("NCAAFB needs SqlUrl set to the base URL for the EG SQL service", nameof(SqlUrl));
-
             if (String.IsNullOrWhiteSpace(NCAAFBGamesScheduleAPI))
                 throw new ArgumentException("NCAAFB needs GameSchedule API URL", nameof(NCAAFBGamesScheduleAPI));
+
+            if (String.IsNullOrWhiteSpace(NCAAFBDivisions))
+                throw new ArgumentException("NCAAFB needs Divisions for getting Game Schedules", nameof(NCAAFBDivisions));
 
             if (String.IsNullOrWhiteSpace(NCAAFBTeamsAPI))
                 throw new ArgumentException("NCAAFB needs Teams API URL ", nameof(NCAAFBTeamsAPI));
 
-            if (String.IsNullOrWhiteSpace(APICallingCycleInterval))
-                throw new ArgumentException("Needs APICallingCycleInterval ", nameof(APICallingCycleInterval));
+
 
             GenerateNCAAFLookUps(null, null);
             System.Timers.Timer aTimer = new System.Timers.Timer();
             aTimer.Elapsed += new System.Timers.ElapsedEventHandler(GenerateNCAAFLookUps);
-            aTimer.Interval = (1000 * 60 * 360);  //Every 6 hours call funtion GenerateNCAAFLookUps locally
+            aTimer.Interval = (1000 * 60 * 720);  //Every 12 hours call funtion GenerateNCAAFLookUps locally
             aTimer.Enabled = true;
         }
 
@@ -155,7 +156,7 @@ namespace BroadcastScores
                 {
                     if (TeamNameList.Keys.Contains(gameDetails.Home) && TeamNameList.Keys.Contains(gameDetails.Away))
                     {
-                        var eventIDTask = new EGSqlQuery(SqlUrl).GetEventIDbyGameInfoAsync(TeamNameList[gameDetails.Home], TeamNameList[gameDetails.Away], gameDetails.GameDate);
+                        var eventIDTask = new EGSqlQuery(SqlUrl).GetEventIDbyGameInfoAsync(TeamNameList[gameDetails.Home] , TeamNameList[gameDetails.Away], gameDetails.GameDate);
 
                         if (!eventIDTask.IsCompleted)
                             await eventIDTask;
@@ -381,28 +382,33 @@ namespace BroadcastScores
             try
             {
                 TeamNameList.Clear();
-                XmlDocument doc = new XmlDocument();
-                doc.Load(NCAAFBTeamsAPI);
-                XmlNode nodeDivision = doc.GetElementsByTagName("division").Item(0);
-
-                foreach (XmlNode nodeConference in nodeDivision)
+                string[] divisions = NCAAFBDivisions.Split(',');
+                foreach (string division in divisions)
                 {
-                    foreach (XmlNode xmlSubdivision in nodeConference)
+                    XmlDocument doc = new XmlDocument();
+                    string teamsAPI = NCAAFBTeamsAPI;
+                    doc.Load(teamsAPI.Replace("{division}", division));
+                    XmlNode nodeDivision = doc.GetElementsByTagName("division").Item(0);
+
+                    foreach (XmlNode nodeConference in nodeDivision)
                     {
-                        //If Conference node directlky contains Team instead of Subdivision
-                        if (xmlSubdivision.Name.ToUpper() == "TEAM")
+                        foreach (XmlNode xmlSubdivision in nodeConference)
                         {
-                            string teamID = xmlSubdivision.Attributes["id"].Value;
-                            string teamName = xmlSubdivision.Attributes["market"].Value;
-                            TeamNameList.Add(teamID, teamName);
-                        }
-                        else
-                        {
-                            foreach (XmlNode xmlTeam in xmlSubdivision)
+                            //If Conference node directlky contains Team instead of Subdivision
+                            if (xmlSubdivision.Name.ToUpper() == "TEAM")
                             {
-                                string teamID = xmlTeam.Attributes["id"].Value;
-                                string teamName = xmlTeam.Attributes["market"].Value;
+                                string teamID = xmlSubdivision.Attributes["id"].Value;
+                                string teamName = xmlSubdivision.Attributes["market"].Value;
                                 TeamNameList.Add(teamID, teamName);
+                            }
+                            else
+                            {
+                                foreach (XmlNode xmlTeam in xmlSubdivision)
+                                {
+                                    string teamID = xmlTeam.Attributes["id"].Value;
+                                    string teamName = xmlTeam.Attributes["market"].Value;
+                                    TeamNameList.Add(teamID, teamName);
+                                }
                             }
                         }
                     }

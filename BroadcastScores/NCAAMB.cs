@@ -24,58 +24,58 @@ using EnterGamingRelay;
 
 namespace BroadcastScores
 {
-    class NHL
+    class NCAAMB
     {
         static Logger logger = LogManager.GetCurrentClassLogger();
         ProcessSignalR objProcessSignalR;
 
         static string SqlUrl { get; set; }
-        string NHLGamesScheduleAPI { get; set; }
-        string NHLScoreAPI { get; set; }
-        static List<NHLGame> todaysGames = new List<NHLGame>();
+        string NCAAMBGamesScheduleAPI { get; set; }
+        string NCAAMBScoreAPI { get; set; }
+        static List<NCAAMBGame> liveGames = new List<NCAAMBGame>();
         string APICallingCycleInterval { get; set; }
         string APICallingCycleIntervalIfGameNotLive { get; set; }
 
 
-        public NHL(string strNHLScoreAPI, ProcessSignalR processSignalR)
+        public NCAAMB(string strNCAAMBScoreAPI, ProcessSignalR processSignalR)
         {
             objProcessSignalR = processSignalR;
             SqlUrl = ConfigurationManager.AppSettings["SqlUrl"];
 
-            NHLScoreAPI = strNHLScoreAPI;
-            NHLGamesScheduleAPI = ConfigurationManager.AppSettings["NHLGamesScheduleAPI"];
+            NCAAMBScoreAPI = strNCAAMBScoreAPI;
+            NCAAMBGamesScheduleAPI = ConfigurationManager.AppSettings["NCAAMBGamesScheduleAPI"];
 
             APICallingCycleInterval = ConfigurationManager.AppSettings["APICallingCycleInterval"];
             APICallingCycleIntervalIfGameNotLive = ConfigurationManager.AppSettings["APICallingCycleIntervalIfGameNotLive"];
 
-            if (String.IsNullOrWhiteSpace(strNHLScoreAPI))
-                throw new ArgumentException("NHL needs Score API URL", nameof(strNHLScoreAPI));
+            if (String.IsNullOrWhiteSpace(strNCAAMBScoreAPI))
+                throw new ArgumentException("NCAAMB needs Score API URL", nameof(strNCAAMBScoreAPI));
 
-            if (String.IsNullOrWhiteSpace(NHLGamesScheduleAPI))
-                throw new ArgumentException("NHL needs GameSchedule API URL", nameof(NHLGamesScheduleAPI));
+            if (String.IsNullOrWhiteSpace(NCAAMBGamesScheduleAPI))
+                throw new ArgumentException("NCAAMB needs GameSchedule API URL", nameof(NCAAMBGamesScheduleAPI));
 
         }
 
-        public async Task BuildNHLScores()
+        public async Task BuildNCAAMBScores()
         {
             while (true)
             {
                 try
                 {
                     await Task.Factory.StartNew(() => System.Threading.Thread.Sleep(2000));
-                    await GetTodaysGames();
+                    await GetLiveGames();
 
-                    if (todaysGames.Count > 0)
+                    if (liveGames.Count > 0)
                     {
                        await FetchAndSendScores();
                     }
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"{ex.GetType().Name} thrown when fetching and creating NHL Score object: {ex.Message}");
+                    Console.WriteLine($"{ex.GetType().Name} thrown when fetching and creating NCAAMB Score object: {ex.Message}");
                 }
 
-                if (todaysGames.Count > 0) //if any game is live Api calling cycle interval will be less otherwise more to avoid frequent polling
+                if (liveGames.Count > 0) //if any game is live Api calling cycle interval will be less otherwise more to avoid frequent polling
                 {
                     System.Threading.Thread.Sleep(Convert.ToInt32(APICallingCycleInterval));
                 }
@@ -87,13 +87,13 @@ namespace BroadcastScores
         }
 
         // Get live games
-        public async Task GetTodaysGames()
+        public async Task GetLiveGames()
         {
             try
             {
-            todaysGames.Clear();
+            liveGames.Clear();
             XmlDocument doc = new XmlDocument();
-            string gameScheduleAPI = NHLGamesScheduleAPI;
+            string gameScheduleAPI = NCAAMBGamesScheduleAPI;
             gameScheduleAPI = gameScheduleAPI.Replace("{year}", DateTime.UtcNow.Year.ToString());
             gameScheduleAPI = gameScheduleAPI.Replace("{month}", DateTime.UtcNow.Month.ToString());
             gameScheduleAPI = gameScheduleAPI.Replace("{day}", DateTime.UtcNow.Day.ToString());
@@ -106,11 +106,13 @@ namespace BroadcastScores
                 string gameStatus = xmlGame.Attributes["status"].Value;
                 if (gameStatus.ToUpper() == "INPROGRESS")
                 {
-                    todaysGames.Add(
-                        new NHLGame
+                    liveGames.Add(
+                        new NCAAMBGame
                         {
                             GameID = xmlGame.Attributes["id"].Value,
-                            MatchID = xmlGame.Attributes["sr_id"].Value
+                            GameSchedule = xmlGame.Attributes["scheduled"].Value,
+                            Home = xmlGame.ChildNodes[1].Attributes["name"].Value,
+                            Away = xmlGame.ChildNodes[2].Attributes["name"].Value
                         });
                 }
             }
@@ -118,8 +120,8 @@ namespace BroadcastScores
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"{ex.GetType().Name} thrown when getting todays NHL Games : {ex.Message}");
-                logger.Error(ex, $"{ex.GetType().Name} thrown when getting todays NHL Games : {ex.Message +  ex.StackTrace}");
+                Console.WriteLine($"{ex.GetType().Name} thrown when getting todays NCAAMB Games : {ex.Message}");
+                logger.Error(ex, $"{ex.GetType().Name} thrown when getting todays NCAAMB Games : {ex.Message +  ex.StackTrace}");
             }
         }
 
@@ -127,42 +129,39 @@ namespace BroadcastScores
         {
             XmlDocument doc = new XmlDocument();
 
-            foreach (NHLGame gameDetails in todaysGames)
+            foreach (NCAAMBGame gameDetails in liveGames)
             {
-                String currentGameURL = NHLScoreAPI;
+                String currentGameURL = NCAAMBScoreAPI;
                 currentGameURL = currentGameURL.Replace("{gameID}", gameDetails.GameID);
                 try
                 {
-                    string matchID = gameDetails.MatchID;
-                    matchID = matchID.Replace("sr:match:", "");
-                    string[] matchIDs = { matchID };
-                    var matchEventsTask = new EGSqlQuery(SqlUrl).MatchIDsToEventAsync(matchIDs);
+                    var eventIDTask = new EGSqlQuery(SqlUrl).GetEventIDbyGameInfoAsync(gameDetails.Home, gameDetails.Away, gameDetails.GameSchedule);
 
                     // Got those EventIDs yet?
-                    if (!matchEventsTask.IsCompleted)
-                        await matchEventsTask;
+                    if (!eventIDTask.IsCompleted)
+                        await eventIDTask;
 
-                    if (matchEventsTask.Result != null && matchEventsTask.Result.ContainsKey(Convert.ToInt32(matchID)))
+                    if (eventIDTask.Result != null)
                     {
-                        int eventID = matchEventsTask.Result[Convert.ToInt32(matchID)];
+                        int eventID = Convert.ToInt32(eventIDTask.Result.EVENT_ID);
                         doc.Load(currentGameURL);
-                        EventMessage msg = CreateNHLScoreMessage(doc.InnerXml, eventID.ToString());
+                        EventMessage msg = CreateNCAAMBScoreMessage(doc.InnerXml, eventID.ToString());
                         if (msg != null)
                         {
-                            objProcessSignalR.SendSignalRFeedtohub(msg, "NHL");
+                            objProcessSignalR.SendSignalRFeedtohub(msg, "NCAAMB");
                         }
                     }
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"{ex.GetType().Name} - NHL Score feed pulling from API : {ex.Message}");
-                    logger.Error(ex, $"{ex.GetType().Name} - NHL Score feed pulling from API : {ex.Message +  ex.StackTrace}");
+                    Console.WriteLine($"{ex.GetType().Name} - NCAAMB Score feed pulling from API : {ex.Message}");
+                    logger.Error(ex, $"{ex.GetType().Name} - NCAAMB Score feed pulling from API : {ex.Message +  ex.StackTrace}");
                 }
             }
 
         }
 
-        public EventMessage CreateNHLScoreMessage(string XMLScorefeed, string eventID)
+        public EventMessage CreateNCAAMBScoreMessage(string XMLScorefeed, string eventID)
         {
             try
             {
@@ -173,11 +172,8 @@ namespace BroadcastScores
                 if (!String.IsNullOrEmpty(XMLScorefeed))
                 {
                     XmlNode nodeGame = doc.GetElementsByTagName("game").Item(0);
-                    string gameStatus = nodeGame.Attributes["period"].Value;
-                    if (gameStatus.ToUpper() == "SCHEDULED")
-                    {
-                        return null;
-                    }
+                    string gameStatus = nodeGame.Attributes["half"].Value;
+
                     XmlNode homeScoreXml = doc.GetElementsByTagName("team").Item(0).FirstChild;
                     XmlNode awayScoreXml = doc.GetElementsByTagName("team").Item(1).FirstChild;
                     if(homeScoreXml == null || awayScoreXml == null || nodeGame == null)
@@ -251,18 +247,20 @@ namespace BroadcastScores
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"{ex.GetType().Name} thrown when creating NHL Gamefeed object: {ex.Message}");
-                logger.Error(ex, $"{ex.GetType().Name} thrown when creating NHL Gamefeed object: {ex.Message +  ex.StackTrace}");
+                Console.WriteLine($"{ex.GetType().Name} thrown when creating NCAAMB Gamefeed object: {ex.Message}");
+                logger.Error(ex, $"{ex.GetType().Name} thrown when creating NCAAMB Gamefeed object: {ex.Message +  ex.StackTrace}");
             }
             return null;
         }
 
     }
 
-    class NHLGame
+    class NCAAMBGame
     {
         public string GameID { get; set; }
-        public string MatchID { get; set; }
+        public string Home { get; set; }
+        public string Away { get; set; }
+        public string GameSchedule { get; set; }
     }
 
 }

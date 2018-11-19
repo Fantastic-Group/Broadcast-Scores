@@ -36,8 +36,10 @@ namespace BroadcastScores
                             .AndSelect("be.EVENT_ID")
                             .AndSelect("be.TEAM1_ID")
                             .AndSelect("be.TEAM2_ID")
-                            .AndWhere($"tth.TEAM_NAME like '%{home}%' OR tth.TEAM_NAME like '{home}%'")
-                            .AndWhere($"tta.TEAM_NAME like '%{away}%' OR tta.TEAM_NAME like '{away}%'")
+                            .AndWhere($"tth.TEAM_NAME like '{home}%'")
+                            .AndWhere($"tta.TEAM_NAME like '{away}%'")
+                            //.AndWhere($"tth.TEAM_NAME like '%{home}%' AND tth.TEAM_NAME like '{home}%'")
+                            //.AndWhere($"tta.TEAM_NAME like '%{away}%' AND tta.TEAM_NAME like '{away}%'")
                             //.AndWhere($"SCD_DATE = '{finalDate}' ")
                             .AndWhere($"ACTUAL_DATE = '{finalDate}' ")
                             .ExecAsync<EventDetails[]>();
@@ -45,13 +47,13 @@ namespace BroadcastScores
                 if (rows is null)
                     return null;
 
-                return (from r in rows
-                        select new EventDetails { EVENT_ID = r.EVENT_ID, }).FirstOrDefault();
+                var result = (from r in rows select new EventDetails { EVENT_ID = r.EVENT_ID, }).FirstOrDefault();
+                return result;
             }
             catch(Exception ex)
             {
-                Console.WriteLine($"{ex.GetType().Name} - NCAAFB getting EventId from EG : {ex.Message}");
-                logger.Error(ex, $"{ex.GetType().Name} -  NCAAFB getting EventId from EG  : {ex.Message + ex.StackTrace}");
+                Console.WriteLine($"{ex.GetType().Name} - NCAAFB getting EventId from EG for {away} vs {home} , {gameDate} : {ex.Message}");
+                logger.Error(ex, $"{ex.GetType().Name} -  NCAAFB getting EventId from EG for {away} vs {home} , {gameDate} : {ex.Message + ex.StackTrace}");
             }
             return null;
         }
@@ -59,7 +61,7 @@ namespace BroadcastScores
         public static DateTime ConverToEasternStandardTime(string gameDate)
         {
             var zone = TimeZoneInfo.GetSystemTimeZones()
-                       .Where(x => x.BaseUtcOffset != TimeZoneInfo.Local.BaseUtcOffset)
+                       //.Where(x => x.BaseUtcOffset != TimeZoneInfo.Local.BaseUtcOffset)
                        .Where(x => x.Id == "Eastern Standard Time")
                        .First();
             DateTime dateinUTC = Convert.ToDateTime(gameDate).ToUniversalTime();

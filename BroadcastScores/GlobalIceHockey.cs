@@ -52,15 +52,8 @@ namespace BroadcastScores
             if (String.IsNullOrWhiteSpace(strGlobalIceHockeyScoreAPI))
                 throw new ArgumentException("GlobalIceHockey needs Score API URL", nameof(strGlobalIceHockeyScoreAPI));
 
-            if (String.IsNullOrWhiteSpace(SqlUrl))
-                throw new ArgumentException("GlobalIceHockey needs SqlUrl set to the base URL for the EG SQL service", nameof(SqlUrl));
-
             if (String.IsNullOrWhiteSpace(GlobalIceHockeyGamesScheduleAPI))
                 throw new ArgumentException("GlobalIceHockey needs GameSchedule API URL", nameof(GlobalIceHockeyGamesScheduleAPI));
-
-            if (String.IsNullOrWhiteSpace(APICallingCycleInterval))
-                throw new ArgumentException("Needs APICallingCycleInterval ", nameof(APICallingCycleInterval));
-
 
         }
 
