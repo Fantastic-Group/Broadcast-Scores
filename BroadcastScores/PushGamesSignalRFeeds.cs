@@ -159,7 +159,7 @@ namespace BroadcastScores
                             logger.Error(e, $"{e.GetType().Name}  Webclient feeds pulling: {e.Message}");
                         }
                         await client.OpenReadTaskAsync(urlScorePull);
-                        System.Threading.Thread.Sleep(5000);
+                        System.Threading.Thread.Sleep(10000);
                     }
                 }
 
@@ -360,8 +360,10 @@ namespace BroadcastScores
 
         public static Dictionary<string, string> ToSRScoreStatus = new Dictionary<string, string>
         {
-            { "1st_half", "First Half" },
-            { "2nd_half", "Second Half" },
+            { "1st_half", "1st Half" },
+            { "2nd_half", "2nd Half" },
+            { "3rd_half", "3rd Half" },
+            { "4th_half", "4th Half" },
             { "1st_set", "First Set" },
             { "2nd_set", "Second Set" },
             { "3rd_set" , "Third Set" },
@@ -372,7 +374,13 @@ namespace BroadcastScores
             { "2nd_quarter", "2nd Quarter" },
             { "3rd_quarter" , "3rd Quarter" },
             { "4th_quarter" , "4th Quarter" },
+            { "5th_quarter" , "5th Quarter" },
+            { "6th_quarter" , "6th Quarter" },
             { "halftime" , "Halftime pause" },
+            { "pause" , "Halftime pause" },
+            { "closed" , "Ended" },
+            { "complete" , "Ended" },
+            { "Aet" , "After Extra Time" },
         };
 
     }

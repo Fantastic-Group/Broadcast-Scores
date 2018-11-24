@@ -84,7 +84,7 @@ namespace BroadcastScores
 
                     var task = hubNProxy.proxy.Invoke(method, authHash, msg.Value);
                     task.Wait();
-                    Console.WriteLine("Message Sent for " + Sport + " to " + hubNProxy.connection.Url);
+                    Console.WriteLine("Message Sent for " + ((Miomni.Gaming.Relay.Responses.EventStatusResponse)msg.Value).MiomniEventID + " for " + Sport + " to " + hubNProxy.connection.Url);
                 }
                 objFeedsToDisk.WritefeedToDisk(msg);
                 //connection.Stop();

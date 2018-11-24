@@ -30,7 +30,7 @@ namespace BroadcastScores
     {
         static Logger logger = LogManager.GetCurrentClassLogger();
         public static string SqlUrl { get; set; }
-        public List<NFLStreamGameScoreHistory> listNFlGameScoreHistory = new List<NFLStreamGameScoreHistory>();
+        //public List<NFLStreamGameScoreHistory> listNFlGameScoreHistory = new List<NFLStreamGameScoreHistory>();
         string NFLBoxScoreAPI { get; set; }
 
         public NFLStream()
@@ -44,7 +44,7 @@ namespace BroadcastScores
 
         }
 
-
+        /*
         public EventMessage CreateNFLScoreMessage(string JsonScorefeed)
         {
             try
@@ -238,6 +238,7 @@ namespace BroadcastScores
             }
             return null;
         }
+        */
 
 
         public EventMessage CreateNFLScoreMessageByBoxScoreAPI(string JsonScorefeed)
@@ -294,34 +295,41 @@ namespace BroadcastScores
 
 
                     int ordinalPeriod = objNFLRoot.payload.game.quarter;
-                    string gameStatus = "";
-                    if (ordinalPeriod == 1)
+                    string gameStatus = objNFLRoot.payload.game.status;
+                    gameStatus = PushGamesSignalRFeeds.ToSRScoreStatus.ContainsKey(gameStatus)
+                                            ? PushGamesSignalRFeeds.ToSRScoreStatus[gameStatus]
+                                            : PushGamesSignalRFeeds.CapitalizeFirstLetter(gameStatus.Replace("_", " "));
+
+                    if (gameStatus.ToUpper() == "INPROGRESS")
                     {
-                        gameStatus = "1st Quarter ";
-                    }
-                    else if (ordinalPeriod == 2)
-                    {
-                        gameStatus = "2nd Quarter ";
-                    }
-                    else if (ordinalPeriod == 3)
-                    {
-                        gameStatus = "3rd Quarter ";
-                    }
-                    else if (ordinalPeriod == 4)
-                    {
-                        gameStatus = "4th Quarter ";
-                    }
-                    else if (ordinalPeriod == 5)
-                    {
-                        gameStatus = "Overtime";
-                    }
-                    else if (ordinalPeriod == 6)
-                    {
-                        gameStatus = "2nd Overtime";
-                    }
-                    else if (ordinalPeriod == 7)
-                    {
-                        gameStatus = "3rd Overtime ";
+                        if (ordinalPeriod == 1)
+                        {
+                            gameStatus = "1st Quarter ";
+                        }
+                        else if (ordinalPeriod == 2)
+                        {
+                            gameStatus = "2nd Quarter ";
+                        }
+                        else if (ordinalPeriod == 3)
+                        {
+                            gameStatus = "3rd Quarter ";
+                        }
+                        else if (ordinalPeriod == 4)
+                        {
+                            gameStatus = "4th Quarter ";
+                        }
+                        else if (ordinalPeriod == 5)
+                        {
+                            gameStatus = "Overtime";
+                        }
+                        else if (ordinalPeriod == 6)
+                        {
+                            gameStatus = "2nd Overtime";
+                        }
+                        else if (ordinalPeriod == 7)
+                        {
+                            gameStatus = "3rd Overtime ";
+                        }
                     }
 
                     var scoreMsg = new EventMessage
@@ -361,7 +369,7 @@ namespace BroadcastScores
 
     }
 
-
+    /*
     public class NFLStreamGameScoreHistory
     {
         public int eventID { get; set; }
@@ -381,7 +389,7 @@ namespace BroadcastScores
         public int q7away { get; set; }
         public DateTime createdDate { get; set; }
     }
-
+    */
 
     public class NFLGame
     {

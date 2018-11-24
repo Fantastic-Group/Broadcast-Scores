@@ -33,7 +33,8 @@ namespace BroadcastScores
         static string SqlUrl { get; set; }
         string NBAGamesScheduleAPI { get; set; }
         string NBAScoreAPI { get; set; }
-        static List<NBAGame> todaysGames = new List<NBAGame>();
+        static List<NBAGame> liveGames = new List<NBAGame>();
+        static List<NBAGame> oldLiveGamesList = new List<NBAGame>();
         string APICallingCycleInterval { get; set; }
         string APICallingCycleIntervalIfGameNotLive { get; set; }
 
@@ -72,9 +73,9 @@ namespace BroadcastScores
                 try
                 {
                     await Task.Factory.StartNew(() => System.Threading.Thread.Sleep(2000));
-                    GetTodaysGames();
+                    GetLiveGames();
 
-                    if (todaysGames.Count > 0)
+                    if (liveGames.Count > 0)
                     {
                         await FetchAndSendScores();
                     }
@@ -84,7 +85,7 @@ namespace BroadcastScores
                     Console.WriteLine($"{ex.GetType().Name} thrown when fetching and creating NBA Score object: {ex.Message}");
                 }
 
-                if (todaysGames.Count > 0) //if any game is live Api calling cycle interval will be less otherwise more to avoid frequent polling
+                if (liveGames.Count > 0) //if any game is live Api calling cycle interval will be less otherwise more to avoid frequent polling
                 {
                     System.Threading.Thread.Sleep(Convert.ToInt32(APICallingCycleInterval));
                 }
@@ -96,11 +97,11 @@ namespace BroadcastScores
         }
 
         // Get live games
-        public void GetTodaysGames()
+        public void GetLiveGames()
         {
             try
             {
-                todaysGames.Clear();
+                liveGames.Clear();
                 XmlDocument doc = new XmlDocument();
                 string gameScheduleAPI = NBAGamesScheduleAPI;
                 gameScheduleAPI = gameScheduleAPI.Replace("{year}", DateTime.UtcNow.Year.ToString());
@@ -113,9 +114,9 @@ namespace BroadcastScores
                     foreach (XmlNode xmlGame in nodeGames)
                     {
                         string gameStatus = xmlGame.Attributes["status"].Value;
-                        if (gameStatus.ToUpper() != "CLOSED" && gameStatus.ToUpper() != "SCHEDULED")
+                        if (gameStatus.ToUpper() != "INPROGRESS")
                         {
-                            todaysGames.Add(
+                            liveGames.Add(
                                 new NBAGame
                                 {
                                     GameID = xmlGame.Attributes["id"].Value,
@@ -123,6 +124,55 @@ namespace BroadcastScores
                                 });
                         }
                     }
+
+                // If game is started yesterday but still live today so fetching yesterdays games also
+                gameScheduleAPI = NBAGamesScheduleAPI;
+                gameScheduleAPI = gameScheduleAPI.Replace("{year}", DateTime.UtcNow.AddDays(-1).Year.ToString());
+                gameScheduleAPI = gameScheduleAPI.Replace("{month}", DateTime.UtcNow.AddDays(-1).Month.ToString());
+                gameScheduleAPI = gameScheduleAPI.Replace("{day}", DateTime.UtcNow.AddDays(-1).Day.ToString());
+                doc.Load(gameScheduleAPI);
+                nodeGames = doc.GetElementsByTagName("games").Item(0);
+
+                if (nodeGames != null)
+                    foreach (XmlNode xmlGame in nodeGames)
+                    {
+                        string gameStatus = xmlGame.Attributes["status"].Value;
+                        if (gameStatus.ToUpper() != "INPROGRESS")
+                        {
+                            liveGames.Add(
+                                new NBAGame
+                                {
+                                    GameID = xmlGame.Attributes["id"].Value,
+                                    MatchID = xmlGame.Attributes["sr_id"].Value
+                                });
+                        }
+                    }
+
+                //////////////////////////////////////////////////////////////////
+                List<NBAGame> tempGameslist = new List<NBAGame>();
+                if (oldLiveGamesList.Count > 0)
+                {
+                    tempGameslist = oldLiveGamesList;
+                }
+                else
+                {
+                    tempGameslist = liveGames;
+                }
+                oldLiveGamesList = liveGames;
+                if (tempGameslist.Count > 0)
+                {
+                    foreach (NBAGame game in tempGameslist)
+                    {
+                        if (!liveGames.Contains(game))
+                        {
+                            // for adding previous live games those are Finshed now, for fetching the final scores of those games
+                            // otherwise once game status is not live(finished), that game was not coming in live game list
+                            // and game status was not changing to Finished and its score were not updating finally
+                            liveGames.Add(game);
+                        }
+                    }
+                }
+                //////////////////////////////////////////////////////////////////
             }
             catch (Exception ex)
             {
@@ -136,7 +186,7 @@ namespace BroadcastScores
         {
             XmlDocument doc = new XmlDocument();
 
-            foreach (NBAGame gameDetails in todaysGames)
+            foreach (NBAGame gameDetails in liveGames)
             {
                 String currentGameURL = NBAScoreAPI;
                 currentGameURL = currentGameURL.Replace("{gameID}", gameDetails.GameID);
@@ -183,11 +233,7 @@ namespace BroadcastScores
                 {
                     XmlNode nodeGame = doc.GetElementsByTagName("game").Item(0);
 
-                    string gameStatus = nodeGame.Attributes["quarter"].Value;
-                    if (gameStatus.ToUpper() == "SCHEDULED")
-                    {
-                        return null;
-                    }
+
                     XmlNode homeScoreXml = doc.GetElementsByTagName("team").Item(0).FirstChild;
                     XmlNode awayScoreXml = doc.GetElementsByTagName("team").Item(1).FirstChild;
                     if (homeScoreXml == null || awayScoreXml == null || nodeGame == null)
@@ -216,27 +262,40 @@ namespace BroadcastScores
                             away_score = Convert.ToInt32(doc.GetElementsByTagName("team").Item(1).Attributes["points"].Value);
                         }
 
-                        string ordinalPeriod = gameStatus;
-                        if (gameStatus == "1")
+                    string gameStatus = nodeGame.Attributes["status"].Value;
+                    //if (gameStatus.ToUpper() == "SCHEDULED")
+                    //{
+                    //    return null;
+                    //}
+                    //gameStatus = PushGamesSignalRFeeds.CapitalizeFirstLetter(gameStatus.Replace("_", " "));
+                    gameStatus = PushGamesSignalRFeeds.ToSRScoreStatus.ContainsKey(gameStatus)
+                                            ? PushGamesSignalRFeeds.ToSRScoreStatus[gameStatus]
+                                            : PushGamesSignalRFeeds.CapitalizeFirstLetter(gameStatus.Replace("_", " "));
+
+                    string ordinalPeriod = nodeGame.Attributes["quarter"].Value;
+                    if (gameStatus.ToUpper() == "INPROGRESS")
+                    {
+                        if (ordinalPeriod == "1")
                             gameStatus = "1st Quarter";
-                        else if (gameStatus == "2")
+                        else if (ordinalPeriod == "2")
                             gameStatus = "2nd Quarter";
-                        else if (gameStatus == "3")
+                        else if (ordinalPeriod == "3")
                             gameStatus = "3rd Quarter";
-                        else if (gameStatus == "4")
+                        else if (ordinalPeriod == "4")
                             gameStatus = "4th Quarter";
-                        else if (gameStatus == "5")
+                        else if (ordinalPeriod == "5")
                             gameStatus = "1st OverTime";
-                        else if (gameStatus == "6")
+                        else if (ordinalPeriod == "6")
                             gameStatus = "2nd OverTime";
-                        else if (gameStatus == "7")
+                        else if (ordinalPeriod == "7")
                             gameStatus = "3rd OverTime";
-                        else if (gameStatus == "8")
+                        else if (ordinalPeriod == "8")
                             gameStatus = "4th OverTime";
-                        else if (gameStatus == "9")
+                        else if (ordinalPeriod == "9")
                             gameStatus = "5th OverTime";
-                        else if (gameStatus == "10")
+                        else if (ordinalPeriod == "10")
                             gameStatus = "6th OverTime";
+                    }
 
 
                         var scoreMsg = new EventMessage

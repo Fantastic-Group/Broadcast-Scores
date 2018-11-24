@@ -18,7 +18,8 @@ namespace BroadcastScores
         {
             try
             {
-                if(home.Contains(" "))
+                var tempquery = query;
+                if (home.Contains(" "))
                     home = home.Substring(0, home.IndexOf(" "));
 
                 if (away.Contains(" "))
@@ -43,7 +44,7 @@ namespace BroadcastScores
                             //.AndWhere($"SCD_DATE = '{finalDate}' ")
                             .AndWhere($"ACTUAL_DATE = '{finalDate}' ")
                             .ExecAsync<EventDetails[]>();
-
+                
                 if (rows is null)
                     return null;
 

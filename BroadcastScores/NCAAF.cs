@@ -36,13 +36,14 @@ namespace BroadcastScores
         string NCAAFBTeamsAPI { get; set; }
         string NCAAFLookupDir { get; set; }
         //static List<NCAAFGame> GamesScheduleList = new List<NCAAFGame>();
-        static List<NCAAFGame> todaysGames = new List<NCAAFGame>();
+        static List<NCAAFGame> liveGames = new List<NCAAFGame>();
+        static List<NCAAFGame> oldLiveGamesList = new List<NCAAFGame>();
         static Dictionary<String, string> TeamNameList = new Dictionary<string, string>();
         string APICallingCycleInterval { get; set; }
         string APICallingCycleIntervalIfGameNotLive { get; set; }
 
 
-        public NCAAF(string strNCAAFBScoreAPI , ProcessSignalR processSignalR)
+        public NCAAF(string strNCAAFBScoreAPI, ProcessSignalR processSignalR)
         {
             objProcessSignalR = processSignalR;
             SqlUrl = ConfigurationManager.AppSettings["SqlUrl"];
@@ -87,12 +88,12 @@ namespace BroadcastScores
                     GetLiveGames();
                     //if (GamesScheduleList.Count > 0)
                     //{
-                        //GetTodaysGames();
+                    //GetTodaysGames();
 
-                        if (todaysGames.Count > 0)
-                        {
-                            await FetchAndSendScores();
-                        }
+                    if (liveGames.Count > 0)
+                    {
+                        await FetchAndSendScores();
+                    }
                     //}
                 }
                 catch (Exception ex)
@@ -100,7 +101,7 @@ namespace BroadcastScores
                     Console.WriteLine($"{ex.GetType().Name} thrown when fetching and creating NCAAF Score object: {ex.Message + ex.StackTrace}");
                 }
 
-                if (todaysGames.Count > 0) //if any game is live Api calling cycle interval will be less otherwise more to avoid frequent polling
+                if (liveGames.Count > 0) //if any game is live Api calling cycle interval will be less otherwise more to avoid frequent polling
                 {
                     System.Threading.Thread.Sleep(Convert.ToInt32(APICallingCycleInterval));
                 }
@@ -145,7 +146,7 @@ namespace BroadcastScores
         {
             XmlDocument doc = new XmlDocument();
 
-            foreach (NCAAFGame gameDetails in todaysGames)
+            foreach (NCAAFGame gameDetails in liveGames)
             {
                 String currentGameURL = NCAAFBScoreAPI;
                 currentGameURL = currentGameURL.Replace("{year}", DateTime.UtcNow.Year.ToString());
@@ -156,7 +157,7 @@ namespace BroadcastScores
                 {
                     if (TeamNameList.Keys.Contains(gameDetails.Home) && TeamNameList.Keys.Contains(gameDetails.Away))
                     {
-                        var eventIDTask = new EGSqlQuery(SqlUrl).GetEventIDbyGameInfoAsync(TeamNameList[gameDetails.Home] , TeamNameList[gameDetails.Away], gameDetails.GameDate);
+                        var eventIDTask = new EGSqlQuery(SqlUrl).GetEventIDbyGameInfoAsync(TeamNameList[gameDetails.Home], TeamNameList[gameDetails.Away], gameDetails.GameDate);
 
                         if (!eventIDTask.IsCompleted)
                             await eventIDTask;
@@ -191,31 +192,32 @@ namespace BroadcastScores
 
                 if (!String.IsNullOrEmpty(XMLScorefeed))
                 {
-                    string schDate = nodegame.Attributes["scheduled"].Value;
-                    if(schDate == null)
-                    {
-                        return null;
-                    }
-                    else
-                    {
-                        // Game is today but not yet started ,EG has these games and we get EventID for that but these games are not active yet
-                        if (Convert.ToDateTime(schDate).ToUniversalTime() > DateTime.UtcNow)
-                            return null;
-                    }
+                    //string schDate = nodegame.Attributes["scheduled"].Value;
+                    //if(schDate == null)
+                    //{
+                    //    return null;
+                    //}
+                    //else
+                    //{
+                    //    // Game is today but not yet started ,EG has these games and we get EventID for that but these games are not active yet
+                    //    if (Convert.ToDateTime(schDate).ToUniversalTime() > DateTime.UtcNow)
+                    //        return null;
+                    //}
 
                     if (nodegame.Attributes["quarter"] == null)
                         return null;
 
-                    string gameStatus = nodegame.Attributes["quarter"].Value;
-                    if (gameStatus == null)
+                    string gameStatus = nodegame.Attributes["status"].Value;
+                    if (gameStatus == null || gameStatus.ToUpper() == "SCHEDULED")
                     {
                         return null;
                     }
+                    //gameStatus = PushGamesSignalRFeeds.CapitalizeFirstLetter(gameStatus.Replace("_", " "));
+                    gameStatus = PushGamesSignalRFeeds.ToSRScoreStatus.ContainsKey(gameStatus)
+                                                                ? PushGamesSignalRFeeds.ToSRScoreStatus[gameStatus]
+                                                                : PushGamesSignalRFeeds.CapitalizeFirstLetter(gameStatus.Replace("_", " "));
 
-                    if (gameStatus.ToUpper() == "SCHEDULED")
-                    {
-                        return null;
-                    }
+
                     XmlNode homeScoreXml = doc.GetElementsByTagName("team").Item(0).FirstChild;
                     XmlNode awayScoreXml = doc.GetElementsByTagName("team").Item(1).FirstChild;
                     if (homeScoreXml == null || awayScoreXml == null)
@@ -244,31 +246,25 @@ namespace BroadcastScores
                         away_score = Convert.ToInt32(awayScoreXml.Attributes["points"].Value);
                     }
 
-                    //if (periodList.Count == 0)
-                    //    periodList.Add(new Period
-                    //    {
-                    //        Name = Convert.ToString(1),
-                    //        Home = home_score,
-                    //        Visitor = away_score
-                    //    });
 
-
-                    int ordinalPeriod = Convert.ToInt32(gameStatus);
-                    if (gameStatus == "1")
-                        gameStatus = "1st Quarter";
-                    else if (gameStatus == "2")
-                        gameStatus = "2nd Quarter";
-                    else if (gameStatus == "3")
-                        gameStatus = "3rd Quarter";
-                    else if (gameStatus == "4")
-                        gameStatus = "4th Quarter";
-                    else if (gameStatus == "5")
-                        gameStatus = "Overtime";
-                    else if (gameStatus == "6")
-                        gameStatus = "2nd Overtime";
-                    else if (gameStatus == "7")
-                        gameStatus = "Penalty Shoot Out";
-
+                    string ordinalPeriod = nodegame.Attributes["quarter"].Value;
+                    if (gameStatus.ToUpper() == "INPROGRESS")
+                    {
+                        if (ordinalPeriod == "1")
+                            gameStatus = "1st Quarter";
+                        else if (ordinalPeriod == "2")
+                            gameStatus = "2nd Quarter";
+                        else if (ordinalPeriod == "3")
+                            gameStatus = "3rd Quarter";
+                        else if (ordinalPeriod == "4")
+                            gameStatus = "4th Quarter";
+                        else if (ordinalPeriod == "5")
+                            gameStatus = "Overtime";
+                        else if (ordinalPeriod == "6")
+                            gameStatus = "2nd Overtime";
+                        else if (ordinalPeriod == "7")
+                            gameStatus = "Penalty Shoot Out";
+                    }
 
 
                     var scoreMsg = new EventMessage
@@ -343,7 +339,7 @@ namespace BroadcastScores
         {
             try
             {
-                todaysGames.Clear();
+                liveGames.Clear();
                 XmlDocument doc = new XmlDocument();
                 string gamesScheduleAPI = NCAAFBGamesScheduleAPI;
                 gamesScheduleAPI = gamesScheduleAPI.Replace("{year}", DateTime.UtcNow.Year.ToString());
@@ -357,7 +353,7 @@ namespace BroadcastScores
                         string gameStatus = xmlGame.Attributes["status"].Value;
                         if (gameStatus.ToUpper() == "INPROGRESS")
                         {
-                            todaysGames.Add(
+                            liveGames.Add(
                                 new NCAAFGame
                                 {
                                     Home = xmlGame.Attributes["home"].Value,
@@ -368,8 +364,35 @@ namespace BroadcastScores
                         }
                     }
                 }
+
+                //////////////////////////////////////////////////////////////////
+                List<NCAAFGame> tempGameslist = new List<NCAAFGame>();
+                if (oldLiveGamesList.Count > 0)
+                {
+                    tempGameslist = oldLiveGamesList;
+                }
+                else
+                {
+                    tempGameslist = liveGames;
+                }
+                oldLiveGamesList = liveGames;
+                if (tempGameslist.Count > 0)
+                {
+                    foreach (NCAAFGame game in tempGameslist)
+                    {
+                        if (!liveGames.Contains(game))
+                        {
+                            // for adding previous live games those are Finshed now, for fetching the final scores of those games
+                            // otherwise once game status is not live(finished), that game was not coming in live game list
+                            // and game status was not changing to Finished and its score were not updating finally
+                            liveGames.Add(game);
+                        }
+                    }
+                }
+                //////////////////////////////////////////////////////////////////
+
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Console.WriteLine($"{ex.GetType().Name} thrown when fetching live games for NCAAFB : {ex.Message}");
                 logger.Error(ex, $"{ex.GetType().Name} thrown when fetching live games for NCAAFB :{ex.Message + ex.StackTrace}");
@@ -414,15 +437,13 @@ namespace BroadcastScores
                     }
                 }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Console.WriteLine($"{ex.GetType().Name} thrown when generating TeamNames lookup for NCAAFB : {ex.Message}");
                 logger.Error(ex, $"{ex.GetType().Name} thrown when generating TeamNames lookup for NCAAFB :{ex.Message + ex.StackTrace}");
             }
 
         }
-
-
 
     }
 

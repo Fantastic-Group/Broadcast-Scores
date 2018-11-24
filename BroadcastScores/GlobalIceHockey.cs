@@ -32,7 +32,8 @@ namespace BroadcastScores
         static string SqlUrl { get; set; }
         string GlobalIceHockeyGamesScheduleAPI { get; set; }
         string GlobalIceHockeyScoreAPI { get; set; }
-        static List<GlobalIceHockeyGame> todaysGames = new List<GlobalIceHockeyGame>();
+        static List<GlobalIceHockeyGame> liveGames = new List<GlobalIceHockeyGame>();
+        static List<GlobalIceHockeyGame> oldLiveGamesList = new List<GlobalIceHockeyGame>();
         string APICallingCycleInterval { get; set; }
         string APICallingCycleIntervalIfGameNotLive { get; set; }
 
@@ -64,9 +65,9 @@ namespace BroadcastScores
                 try
                 {
                     await Task.Factory.StartNew(() => System.Threading.Thread.Sleep(2000));
-                    GetTodaysGames();
+                    GetLiveGames();
 
-                    if (todaysGames.Count > 0)
+                    if (liveGames.Count > 0)
                     {
                         await FetchAndSendScores();
                     }
@@ -76,7 +77,7 @@ namespace BroadcastScores
                     Console.WriteLine($"{ex.GetType().Name} thrown when fetching and creating GlobalIceHockey Score object: {ex.Message}");
                 }
 
-                if (todaysGames.Count > 0) //if any game is live Api calling cycle interval will be less otherwise more to avoid frequent polling
+                if (liveGames.Count > 0) //if any game is live Api calling cycle interval will be less otherwise more to avoid frequent polling
                 {
                     System.Threading.Thread.Sleep(Convert.ToInt32(APICallingCycleInterval));
                 }
@@ -88,11 +89,11 @@ namespace BroadcastScores
         }
 
         // Get live games
-        public void GetTodaysGames()
+        public void GetLiveGames()
         {
             try
             {
-                todaysGames.Clear();
+                liveGames.Clear();
                 XmlDocument doc = new XmlDocument();
                 string gameScheduleAPI = GlobalIceHockeyGamesScheduleAPI;
                 gameScheduleAPI = gameScheduleAPI.Replace("{date}", DateTime.UtcNow.ToString("yyyy-MM-dd"));
@@ -105,13 +106,58 @@ namespace BroadcastScores
                         string gameStatus = xmlGame.Attributes["status"].Value;
                         if (gameStatus.ToUpper() == "LIVE")
                         {
-                            todaysGames.Add(
+                            liveGames.Add(
                                 new GlobalIceHockeyGame
                                 {
                                     MatchID = xmlGame.Attributes["id"].Value
                                 });
                         }
                     }
+
+                gameScheduleAPI = GlobalIceHockeyGamesScheduleAPI;
+                gameScheduleAPI = gameScheduleAPI.Replace("{date}", DateTime.UtcNow.AddDays(-1).ToString("yyyy-MM-dd"));
+                doc.Load(gameScheduleAPI);
+                nodeGames = doc.GetElementsByTagName("schedule").Item(0);
+
+                if (nodeGames != null)
+                    foreach (XmlNode xmlGame in nodeGames)
+                    {
+                        string gameStatus = xmlGame.Attributes["status"].Value;
+                        if (gameStatus.ToUpper() == "LIVE")
+                        {
+                            liveGames.Add(
+                                new GlobalIceHockeyGame
+                                {
+                                    MatchID = xmlGame.Attributes["id"].Value
+                                });
+                        }
+                    }
+
+                //////////////////////////////////////////////////////////////////
+                List<GlobalIceHockeyGame> tempGameslist = new List<GlobalIceHockeyGame>();
+                if (oldLiveGamesList.Count > 0)
+                {
+                    tempGameslist = oldLiveGamesList;
+                }
+                else
+                {
+                    tempGameslist = liveGames;
+                }
+                oldLiveGamesList = liveGames;
+                if (tempGameslist.Count > 0)
+                {
+                    foreach (GlobalIceHockeyGame game in tempGameslist)
+                    {
+                        if (!liveGames.Contains(game))
+                        {
+                            // for adding previous live games those are Finshed now, for fetching the final scores of those games
+                            // otherwise once game status is not live(finished), that game was not coming in live game list
+                            // and game status was not changing to Finished and its score were not updating finally
+                            liveGames.Add(game);
+                        }
+                    }
+                }
+                //////////////////////////////////////////////////////////////////
 
             }
             catch (Exception ex)
@@ -125,7 +171,7 @@ namespace BroadcastScores
         {
             XmlDocument doc = new XmlDocument();
 
-            foreach (GlobalIceHockeyGame gameDetails in todaysGames)
+            foreach (GlobalIceHockeyGame gameDetails in liveGames)
             {
                 String currentGameURL = GlobalIceHockeyScoreAPI;
                 currentGameURL = currentGameURL.Replace("{matchID}", gameDetails.MatchID);
@@ -179,6 +225,7 @@ namespace BroadcastScores
                     if (nodeperiodScores.HasChildNodes)
                         foreach (XmlNode x in nodeperiodScores.ChildNodes)
                         {
+                            if(x.Attributes["home_score"] != null && x.Attributes["away_score"] != null && x.Attributes["number"] != null)
                             periodList.Add(new Period
                             {
                                 Name = x.Attributes["number"].Value,
@@ -190,19 +237,23 @@ namespace BroadcastScores
                     int home_score = 0;
                     int away_score = 0;
 
-                    if (periodList != null)
+                    if (periodList != null && nodeSportEventStatus.Attributes["home_score"] != null && nodeSportEventStatus.Attributes["away_score"] != null)
                     {
                         home_score = Convert.ToInt32(nodeSportEventStatus.Attributes["home_score"].Value);
                         away_score = Convert.ToInt32(nodeSportEventStatus.Attributes["away_score"].Value);
                     }
 
                     string gameStatus = nodeSportEventStatus.Attributes["match_status"].Value;
-                    if(gameStatus.ToUpper() == "ENDED")
-                    {
-                        return null;
-                    }
+                    //gameStatus = PushGamesSignalRFeeds.CapitalizeFirstLetter(gameStatus.Replace("_", " "));
+                    gameStatus = PushGamesSignalRFeeds.ToSRScoreStatus.ContainsKey(gameStatus)
+                                            ? PushGamesSignalRFeeds.ToSRScoreStatus[gameStatus]
+                                            : PushGamesSignalRFeeds.CapitalizeFirstLetter(gameStatus.Replace("_", " "));
+                    //if(gameStatus.ToUpper() == "ENDED")
+                    //{
+                    //    return null;
+                    //}
 
-                        periodList.Add(new Period
+                    periodList.Add(new Period
                         {
                             Name = Convert.ToString(periodList.Count + 1),
                             Home = home_score - periodList.Sum(x=>x.Home),
@@ -210,22 +261,19 @@ namespace BroadcastScores
                         });
 
                     string ordinalPeriod = Convert.ToString(periodList.Count());
-                     if (ordinalPeriod == "1")
-                         gameStatus = "1st Period";
-                     else if (ordinalPeriod == "2")
-                         gameStatus = "2nd Period";
-                     else if (ordinalPeriod == "3")
-                         gameStatus = "3rd Period";
-                     else if (ordinalPeriod == "4")
-                         gameStatus = "4th Period";
-                     else if (ordinalPeriod == "5")
-                         gameStatus = "5th Period";
-                     else if (ordinalPeriod == "6")
-                         gameStatus = "6th Period";
-                     else if (ordinalPeriod == "7")
-                         gameStatus = "7th Period";
-                     else if (ordinalPeriod == "8")
-                         gameStatus = "8th Period";
+                    if (gameStatus.ToUpper() == "INPROGRESS")
+                    {
+                        if (ordinalPeriod == "1")
+                            gameStatus = "1st Period";
+                        else if (ordinalPeriod == "2")
+                            gameStatus = "2nd Period";
+                        else if (ordinalPeriod == "3")
+                            gameStatus = "3rd Period";
+                        else if (ordinalPeriod == "4")
+                            gameStatus = "1st Overtime";
+                        else if (ordinalPeriod == "5")
+                            gameStatus = "Penalty Shootout";
+                    }
 
 
                     var scoreMsg = new EventMessage
