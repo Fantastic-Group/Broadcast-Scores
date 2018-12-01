@@ -114,7 +114,7 @@ namespace BroadcastScores
                     foreach (XmlNode xmlGame in nodeGames)
                     {
                         string gameStatus = xmlGame.Attributes["status"].Value;
-                        if (gameStatus.ToUpper() != "INPROGRESS")
+                        if (gameStatus.ToUpper() == "INPROGRESS")
                         {
                             liveGames.Add(
                                 new NBAGame
@@ -137,7 +137,7 @@ namespace BroadcastScores
                     foreach (XmlNode xmlGame in nodeGames)
                     {
                         string gameStatus = xmlGame.Attributes["status"].Value;
-                        if (gameStatus.ToUpper() != "INPROGRESS")
+                        if (gameStatus.ToUpper() == "INPROGRESS")
                         {
                             liveGames.Add(
                                 new NBAGame
@@ -233,7 +233,6 @@ namespace BroadcastScores
                 {
                     XmlNode nodeGame = doc.GetElementsByTagName("game").Item(0);
 
-
                     XmlNode homeScoreXml = doc.GetElementsByTagName("team").Item(0).FirstChild;
                     XmlNode awayScoreXml = doc.GetElementsByTagName("team").Item(1).FirstChild;
                     if (homeScoreXml == null || awayScoreXml == null || nodeGame == null)
@@ -261,6 +260,7 @@ namespace BroadcastScores
                             home_score = Convert.ToInt32(doc.GetElementsByTagName("team").Item(0).Attributes["points"].Value);
                             away_score = Convert.ToInt32(doc.GetElementsByTagName("team").Item(1).Attributes["points"].Value);
                         }
+
 
                     string gameStatus = nodeGame.Attributes["status"].Value;
                     //if (gameStatus.ToUpper() == "SCHEDULED")

@@ -19,9 +19,14 @@ namespace BroadcastScores
             try
             {
                 var tempquery = query;
+                // This is to remove _ and - characters to improve the matching between SportRadar and EG team names
+                home = home.Replace("-", " ");
+                home = home.Replace("_", " ");
                 if (home.Contains(" "))
                     home = home.Substring(0, home.IndexOf(" "));
 
+                away = away.Replace("-", " ");
+                away = away.Replace("_", " ");
                 if (away.Contains(" "))
                     away = away.Substring(0, away.IndexOf(" "));
 

@@ -34,16 +34,16 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="EnterGamingRelay">
-      <HintPath>..\..\Miomni\Entergaming\EnterGamingRelay\bin\Debug\EnterGamingRelay.dll</HintPath>
+      <HintPath>..\..\Entergaming\EnterGamingRelay\bin\Debug\EnterGamingRelay.dll</HintPath>
     </Reference>
     <Reference Include="EventLib">
-      <HintPath>..\..\Miomni\GamingNexus-LVDCV2\GamingNexus\EventLib\bin\Release\EventLib.dll</HintPath>
+      <HintPath>..\..\GamingNexus-LVDCV2\GamingNexus\EventLib\bin\Release\EventLib.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.AspNet.SignalR.Client, Version=2.3.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\packages\Microsoft.AspNet.SignalR.Client.2.3.0\lib\net45\Microsoft.AspNet.SignalR.Client.dll</HintPath>
     </Reference>
     <Reference Include="MiddleKit">
-      <HintPath>..\..\Miomni\GamingNexus-LVDCV2\GamingNexus\MiddleKit\bin\Release\MiddleKit.dll</HintPath>
+      <HintPath>..\..\GamingNexus-LVDCV2\GamingNexus\MiddleKit\bin\Release\MiddleKit.dll</HintPath>
     </Reference>
     <Reference Include="Newtonsoft.Json, Version=11.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>..\packages\Newtonsoft.Json.11.0.2\lib\net45\Newtonsoft.Json.dll</HintPath>
@@ -52,10 +52,10 @@
       <HintPath>..\packages\NLog.4.5.10\lib\net45\NLog.dll</HintPath>
     </Reference>
     <Reference Include="RelayModelUniversal">
-      <HintPath>..\..\Miomni\GamingNexus-LVDCV2\GamingNexus\RelayModelUniversal\bin\Release\RelayModelUniversal.dll</HintPath>
+      <HintPath>..\..\GamingNexus-LVDCV2\GamingNexus\RelayModelUniversal\bin\Release\RelayModelUniversal.dll</HintPath>
     </Reference>
     <Reference Include="SportsKit">
-      <HintPath>..\..\Miomni\GamingNexus-LVDCV2\GamingNexus\SportsKit\bin\Release\SportsKit.dll</HintPath>
+      <HintPath>..\..\GamingNexus-LVDCV2\GamingNexus\SportsKit\bin\Release\SportsKit.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Configuration" />
