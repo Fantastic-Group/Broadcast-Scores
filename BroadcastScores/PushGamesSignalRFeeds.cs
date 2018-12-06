@@ -98,13 +98,15 @@ namespace BroadcastScores
                 }
                 else // For all Push feeds
                 {
-                    var client = new WebClient();
                     while (true)
                     {
                         try
                         {
+                            var client = new WebClient();
                             client.OpenReadCompleted += (sender, args) =>
                             {
+                                // Only read stream if there is no error in webclient connection to SportRadar, beacause without this condition its directly closing/exiting program without catching exception
+                                if (args.Error == null) 
                                 using (var reader = new StreamReader(args.Result))
                                 {
                                     while (!reader.EndOfStream)
@@ -152,13 +154,13 @@ namespace BroadcastScores
                                     }
                                 }
                             };
+                            await client.OpenReadTaskAsync(urlScorePull);
                         }
                         catch (Exception e)
                         {
                             Console.WriteLine($"{e.GetType().Name}  Webclient feeds pulling: {e.Message}");
                             logger.Error(e, $"{e.GetType().Name}  Webclient feeds pulling: {e.Message}");
                         }
-                        await client.OpenReadTaskAsync(urlScorePull);
                         System.Threading.Thread.Sleep(10000);
                     }
                 }
@@ -377,7 +379,6 @@ namespace BroadcastScores
             { "5th_quarter" , "5th Quarter" },
             { "6th_quarter" , "6th Quarter" },
             { "halftime" , "Halftime pause" },
-            { "pause" , "Halftime pause" },
             { "closed" , "Ended" },
             { "complete" , "Ended" },
             { "Aet" , "After Extra Time" },

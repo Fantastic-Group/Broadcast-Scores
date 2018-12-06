@@ -144,8 +144,6 @@ namespace BroadcastScores
 
         public async Task FetchAndSendScores()
         {
-            XmlDocument doc = new XmlDocument();
-
             foreach (NCAAFGame gameDetails in liveGames)
             {
                 String currentGameURL = NCAAFBScoreAPI;
@@ -155,6 +153,7 @@ namespace BroadcastScores
                 currentGameURL = currentGameURL.Replace("{away}", gameDetails.Home);
                 try
                 {
+                    XmlDocument doc = new XmlDocument();
                     if (TeamNameList.Keys.Contains(gameDetails.Home) && TeamNameList.Keys.Contains(gameDetails.Away))
                     {
                         var eventIDTask = new EGSqlQuery(SqlUrl).GetEventIDbyGameInfoAsync(TeamNameList[gameDetails.Home], TeamNameList[gameDetails.Away], gameDetails.GameDate);

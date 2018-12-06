@@ -173,14 +173,13 @@ namespace BroadcastScores
 
         public async Task FetchAndSendScores()
         {
-            XmlDocument doc = new XmlDocument();
-
             foreach (GlobalBasketBallGame gameDetails in liveGames)
             {
                 String currentGameURL = GlobalBasketBallScoreAPI;
                 currentGameURL = currentGameURL.Replace("{matchID}", gameDetails.MatchID);
                 try
                 {
+                    XmlDocument doc = new XmlDocument();
                     string matchID = gameDetails.MatchID;
                     matchID = matchID.Replace("sr:match:", "");
                     string[] matchIDs = { matchID };
@@ -258,12 +257,15 @@ namespace BroadcastScores
                     //    return null;
                     //}
 
-                    periodList.Add(new Period
+                    if (gameStatus.ToUpper() != "ENDED")
                     {
-                        Name = Convert.ToString(periodList.Count + 1),
-                        Home = home_score - periodList.Sum(x => x.Home),
-                        Visitor = away_score - periodList.Sum(x => x.Visitor),
-                    });
+                        periodList.Add(new Period
+                        {
+                            Name = Convert.ToString(periodList.Count + 1),
+                            Home = home_score - periodList.Sum(x => x.Home),
+                            Visitor = away_score - periodList.Sum(x => x.Visitor),
+                        });
+                    }
 
                     string ordinalPeriod = Convert.ToString(periodList.Count());
                     if (gameStatus.ToUpper() == "INPROGRESS")

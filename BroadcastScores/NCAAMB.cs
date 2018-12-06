@@ -179,14 +179,13 @@ namespace BroadcastScores
 
         public async Task FetchAndSendScores()
         {
-            XmlDocument doc = new XmlDocument();
-
             foreach (NCAAMBGame gameDetails in liveGames)
             {
                 String currentGameURL = NCAAMBScoreAPI;
                 currentGameURL = currentGameURL.Replace("{gameID}", gameDetails.GameID);
                 try
                 {
+                    XmlDocument doc = new XmlDocument();
                     var eventIDTask = new EGSqlQuery(SqlUrl).GetEventIDbyGameInfoAsync(gameDetails.Home, gameDetails.Away, gameDetails.GameSchedule);
 
                     // Got those EventIDs yet?

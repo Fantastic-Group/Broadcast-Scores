@@ -184,14 +184,13 @@ namespace BroadcastScores
 
         public async Task FetchAndSendScores()
         {
-            XmlDocument doc = new XmlDocument();
-
             foreach (NBAGame gameDetails in liveGames)
             {
                 String currentGameURL = NBAScoreAPI;
                 currentGameURL = currentGameURL.Replace("{gameID}", gameDetails.GameID);
                 try
                 {
+                    XmlDocument doc = new XmlDocument();
                     string matchID = gameDetails.MatchID.Replace("sr:match:", "");
                     string[] matchIDs = { matchID };
                     var matchEventsTask = new EGSqlQuery(SqlUrl).MatchIDsToEventAsync(matchIDs);

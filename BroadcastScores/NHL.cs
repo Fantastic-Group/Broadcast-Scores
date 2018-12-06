@@ -175,14 +175,13 @@ namespace BroadcastScores
 
         public async Task FetchAndSendScores()
         {
-            XmlDocument doc = new XmlDocument();
-
             foreach (NHLGame gameDetails in liveGames)
             {
                 String currentGameURL = NHLScoreAPI;
                 currentGameURL = currentGameURL.Replace("{gameID}", gameDetails.GameID);
                 try
                 {
+                    XmlDocument doc = new XmlDocument();
                     string matchID = gameDetails.MatchID;
                     matchID = matchID.Replace("sr:match:", "");
                     string[] matchIDs = { matchID };
