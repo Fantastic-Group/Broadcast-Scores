@@ -31,15 +31,6 @@ namespace BroadcastScores
         static void Main(string[] args)
         {
             ProcessGameScores().Wait();
-            /*NFLStream obj = new NFLStream();
-            string s;
-            using (StreamReader r = new StreamReader("d:\\a.json"))
-            {
-                s = r.ReadToEnd();
-                obj.CreateNFLScoreMessage(s);
-
-            }*/
-
         }
 
         private static async Task ProcessGameScores()

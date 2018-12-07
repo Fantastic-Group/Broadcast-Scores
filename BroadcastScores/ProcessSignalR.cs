@@ -84,7 +84,10 @@ namespace BroadcastScores
 
                     var task = hubNProxy.proxy.Invoke(method, authHash, msg.Value);
                     task.Wait();
-                    Console.WriteLine("Message Sent for " + ((Miomni.Gaming.Relay.Responses.EventStatusResponse)msg.Value).MiomniEventID + " for " + Sport + " to " + hubNProxy.connection.Url);
+
+                    string eventID = ((Miomni.Gaming.Relay.Responses.EventStatusResponse)msg.Value).MiomniEventID;
+                    string currentPeriod = ((Miomni.Gaming.Relay.Responses.EventStatusResponse)msg.Value).Score.CurrentPeriod;
+                    Console.WriteLine("Message Sent for " + eventID + " with Status:'" + currentPeriod + "' for " + Sport + " to " + hubNProxy.connection.Url);
                 }
                 objFeedsToDisk.WritefeedToDisk(msg);
                 //connection.Stop();

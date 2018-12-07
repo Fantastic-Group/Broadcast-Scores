@@ -239,7 +239,15 @@ namespace BroadcastScores
                                                                 ? ToSRScoreStatus[gameStatus]
                                                                 : CapitalizeFirstLetter(gameStatus.Replace("_", " "));
 
-
+                    string ordinalPeriod = "0";
+                    if (nodeEventStatus.Attributes["period"] != null)
+                    {
+                        ordinalPeriod = nodeEventStatus.Attributes["period"].Value;
+                    }
+                    else if (doc.GetElementsByTagName("event").Item(0).Attributes["Status"] != null)
+                    {
+                        ordinalPeriod = doc.GetElementsByTagName("event").Item(0).Attributes["Status"].Value;
+                    }
 
                     var scoreMsg = new EventMessage
                     {
@@ -254,7 +262,7 @@ namespace BroadcastScores
                             Score = new Score
                             {
                                 CurrentPeriod = gameStatus,
-                                OrdinalPeriod = Convert.ToInt32(nodeEventStatus.Attributes["period"].Value),
+                                OrdinalPeriod = Convert.ToInt32(ordinalPeriod),
                                 Time = null,
                                 Home = home_score,
                                 Visitor = away_score,
@@ -267,8 +275,8 @@ namespace BroadcastScores
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"{ex.GetType().Name} PushGameSignalRfeeds CreateGamesScoreMessage : thrown when creating Gamefeed object: {ex.Message}");
-                logger.Error(ex, $"{ex.GetType().Name} PushGameSignalRfeeds CreateGamesScoreMessage :thrown when creating Gamefeed object: {ex.Message +  ex.StackTrace}");
+                Console.WriteLine($"{ex.GetType().Name} thrown when creating Soccer Gamefeed object: {ex.Message}");
+                logger.Error(ex, $"{ex.GetType().Name} thrown when creating Soccer Gamefeed object: {ex.Message +  ex.StackTrace}");
             }
             return null;
         }
