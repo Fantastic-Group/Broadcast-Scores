@@ -268,14 +268,13 @@ namespace BroadcastScores
                     }
 
                     string ordinalPeriod = Convert.ToString(periodList.Count());
-                    if (gameStatus.ToUpper() == "INPROGRESS")
+                    /*if (gameStatus.ToUpper() == "INPROGRESS")
                     {
                         if (ordinalPeriod == "1")
                             gameStatus = "1st Half";
                         else if (ordinalPeriod == "2")
                             gameStatus = "2nd Half";
                         else if (ordinalPeriod == "3")
-
                             gameStatus = "3rd Half";
                         else if (ordinalPeriod == "4")
                             gameStatus = "4th Half";
@@ -287,7 +286,7 @@ namespace BroadcastScores
                             gameStatus = "7th Half";
                         else if (ordinalPeriod == "8")
                             gameStatus = "8th Half";
-                    }
+                    }*/
 
 
                     var scoreMsg = new EventMessage

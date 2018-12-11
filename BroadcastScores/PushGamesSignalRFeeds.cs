@@ -388,8 +388,16 @@ namespace BroadcastScores
             { "6th_quarter" , "6th Quarter" },
             { "halftime" , "Halftime pause" },
             { "closed" , "Ended" },
+            { "Closed" , "Ended" },
             { "complete" , "Ended" },
-            { "Aet" , "After Extra Time" },
+            { "Complete" , "Ended" },
+            { "finished" , "Ended" },
+            { "Finished" , "Ended" },
+            { "Aet" , "Ended" },
+            { "aet" , "Ended" },
+            { "ot" , "Overtime" },
+            { "Ot" , "Overtime" },
+            { "OT" , "Overtime" },
         };
 
     }

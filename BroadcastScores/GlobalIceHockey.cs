@@ -263,7 +263,7 @@ namespace BroadcastScores
                     }
 
                     string ordinalPeriod = Convert.ToString(periodList.Count());
-                    if (gameStatus.ToUpper() == "INPROGRESS")
+                    /*if (gameStatus.ToUpper() == "INPROGRESS")
                     {
                         if (ordinalPeriod == "1")
                             gameStatus = "1st Period";
@@ -275,7 +275,7 @@ namespace BroadcastScores
                             gameStatus = "1st Overtime";
                         else if (ordinalPeriod == "5")
                             gameStatus = "Penalty Shootout";
-                    }
+                    }*/
 
 
                     var scoreMsg = new EventMessage

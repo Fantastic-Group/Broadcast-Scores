@@ -279,9 +279,9 @@ namespace BroadcastScores
                         else if (ordinalPeriod == "2")
                             gameStatus = "2nd Half";
                         else if (ordinalPeriod == "3")
-                            gameStatus = "3rd Half";
+                            gameStatus = "Overtime";
                         else if (ordinalPeriod == "4")
-                            gameStatus = "4th Half";
+                            gameStatus = "2nd Overtime";
                         else if (ordinalPeriod == "5")
                             gameStatus = "5th Half";
                         else if (ordinalPeriod == "6")
