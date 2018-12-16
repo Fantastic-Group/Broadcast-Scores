@@ -21,36 +21,31 @@ namespace BroadcastScores
     public class ProcessSignalR
     {
 
-        public static string SignalUrls { get; set; }
+        public static string SignalUrl { get; set; }
         public static string hubUrl, salt, hub, method;
         static Logger logger = LogManager.GetCurrentClassLogger();
         static ScoreFeedsToDisk objFeedsToDisk = new ScoreFeedsToDisk();
-        List<HubNProxy> connectionList = new List<HubNProxy>();
+        HubConnection connection;
+        IHubProxy proxy;
+        int counterMessageToSignalR = 0;
 
         public ProcessSignalR()
         {
-            SignalUrls = ConfigurationManager.AppSettings["SignalUrls"];
+            SignalUrl = ConfigurationManager.AppSettings["SignalUrl"];
             salt = ConfigurationManager.AppSettings["SignalRSalt"];
             hub = ConfigurationManager.AppSettings["SignalRHub"];
             method = ConfigurationManager.AppSettings["SignalRMethod"];
 
-            if (String.IsNullOrWhiteSpace(SignalUrls))
+            if (String.IsNullOrWhiteSpace(SignalUrl))
                 throw new ArgumentException("Needs SendSignalR urls to send feeds", nameof(SendSignalR));
 
-            string[] signalRurl = SignalUrls.Split(',');
-            foreach (string hubUrl in signalRurl)
-            {
-                CreateSignalRConnectionandConnect(hubUrl);
-            }
-
+            CreateSignalRConnectionandConnect(SignalUrl);
         }
 
         public void CreateSignalRConnectionandConnect(string hubConnectionURL)
         {
             try
             {
-                HubConnection connection;
-                IHubProxy proxy;
                 connection = new HubConnection(hubConnectionURL);
                 connection.Error += Connection_Error;
                 connection.ConnectionSlow += Connection_ConnectionSlow;
@@ -58,7 +53,6 @@ namespace BroadcastScores
                 proxy = connection.CreateHubProxy(hub);
                 connection.Start().Wait();
 
-                connectionList.Add(new HubNProxy { proxy = proxy, connection = connection });
                 Console.WriteLine("SignalR Connection created for " +hubConnectionURL);
             }
             catch(Exception ex)
@@ -74,15 +68,21 @@ namespace BroadcastScores
             {
                 string serialised = JsonConvert.SerializeObject(msg.Value);
                 string authHash = $"{serialised}{salt}".ToSHA256();
-                foreach (HubNProxy hubNProxy in connectionList)
+
+                if(counterMessageToSignalR > 20)
                 {
-                    if (hubNProxy.connection.State.ToString().ToUpper() == "DISCONNECTED")
+                    counterMessageToSignalR = 0;
+                    connection.Stop();
+                    connection.Start().Wait();
+                    Console.WriteLine("Connecting to " + connection.Url);
+                }
+                    if (connection.State.ToString().ToUpper() == "DISCONNECTED")
                     {
-                        Console.WriteLine("Reconnecting to " + hubNProxy.connection.Url);
-                        hubNProxy.connection.Start().Wait();
-                        //Some times proxy is not getting enabled to it throws error : connection was disconnected before invocation result was received
+                        Console.WriteLine("Reconnecting to " + connection.Url);
+                        connection.Start().Wait();
+                        //Some times proxy is not getting enabled so it throws error : connection was disconnected before invocation result was received
                         // To avoid error added below wait
-                        System.Threading.Thread.Sleep(5000);
+                        System.Threading.Thread.Sleep(3000);
                     }
 
                     string eventID = ((Miomni.Gaming.Relay.Responses.EventStatusResponse)msg.Value).MiomniEventID;
@@ -93,18 +93,20 @@ namespace BroadcastScores
                         ((Miomni.Gaming.Relay.Responses.EventStatusResponse)msg.Value).Score.OrdinalPeriod = 0; 
                     }
 
-                    var task = hubNProxy.proxy.Invoke(method, authHash, msg.Value);
+                    var task = proxy.Invoke(method, authHash, msg.Value);
                     task.Wait();
 
+                    Console.WriteLine("Message Sent for " + eventID + " with Status:'" + currentPeriod + "' for " + Sport + " to " + connection.Url);
+
                     //This logic is only for blocking markets as sometimes EG games are active even after the game finished 
-                    Console.WriteLine("Message Sent for " + eventID + " with Status:'" + currentPeriod + "' for " + Sport + " to " + hubNProxy.connection.Url);
                     if(currentPeriod.ToUpper() == "ENDED")
                     {
                         BlockMarketsAfterGameEnds(eventID, Sport).Wait();
                     }
-                }
+
                 objFeedsToDisk.WritefeedToDisk(msg);
-                //connection.Stop();
+                counterMessageToSignalR++;
+                
             }
             catch (Exception ex)
             {
@@ -178,21 +180,20 @@ namespace BroadcastScores
 
                 string serialised = JsonConvert.SerializeObject(eventMessage.Value);
                 string authHash = $"{serialised}{salt}".ToSHA256();
-                foreach (HubNProxy hubNProxy in connectionList)
-                {
-                    if (hubNProxy.connection.State.ToString().ToUpper() == "DISCONNECTED")
+
+
+                    if (connection.State.ToString().ToUpper() == "DISCONNECTED")
                     {
-                        Console.WriteLine("Reconnecting to " + hubNProxy.connection.Url);
-                        hubNProxy.connection.Start().Wait();
-                        //Some times proxy is not getting enabled to it throws error : connection was disconnected before invocation result was received
+                        Console.WriteLine("Reconnecting to " + connection.Url);
+                        connection.Start().Wait();
+                        //Some times proxy is not getting enabled so it throws error : connection was disconnected before invocation result was received
                         // To avoid error added below wait
-                        System.Threading.Thread.Sleep(5000);
+                        System.Threading.Thread.Sleep(3000);
                     }
 
-                    var task = hubNProxy.proxy.Invoke(method, authHash, eventMessage.Value);
+                    var task = proxy.Invoke(method, authHash, eventMessage.Value);
                     task.Wait();
-                    Console.WriteLine("Message Sent for " + eventID + " for blocking Markets as Game Ended for " + sport + " to " + hubNProxy.connection.Url);
-                }
+                    Console.WriteLine("Message Sent for " + eventID + " for blocking Markets as Game Ended for " + sport + " to " + connection.Url);
             }
             catch(Exception ex)
             {
@@ -201,11 +202,6 @@ namespace BroadcastScores
             }
         }
 
-        class HubNProxy
-        {
-            public HubConnection connection;
-            public IHubProxy proxy;
-        }
 
     }
 }

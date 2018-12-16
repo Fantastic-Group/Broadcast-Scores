@@ -105,53 +105,62 @@ namespace BroadcastScores
                             var client = new WebClient();
                             client.OpenReadCompleted += (sender, args) =>
                             {
-                                // Only read stream if there is no error in webclient connection to SportRadar, beacause without this condition its directly closing/exiting program without catching exception
-                                if (args.Error == null) 
-                                using (var reader = new StreamReader(args.Result))
+                                try
                                 {
-                                    while (!reader.EndOfStream)
-                                    {
-                                        string data = reader.ReadLine().Trim();
-                                        EventMessage msgScore = new EventMessage();
-                                        if (urlScorePull.ToUpper().Contains("NFL"))
+                                    // Only read stream if there is no error in webclient connection to SportRadar, beacause without this condition its directly closing/exiting program without catching exception
+                                    if (args.Error == null)
+                                        using (var reader = new StreamReader(args.Result))
                                         {
-                                            if (!String.IsNullOrEmpty(data))
+                                            reader.BaseStream.ReadTimeout = 10000;
+                                            while (!reader.EndOfStream)
                                             {
-                                                if(!data.Contains("heartbeat"))
-                                                msgScore = objNFL.CreateNFLScoreMessageByBoxScoreAPI(data);
-                                            }
-                                            if (msgScore != null)
-                                            {
-                                                if (msgScore.Value != null)
+                                                string data = reader.ReadLine().Trim();
+                                                EventMessage msgScore = new EventMessage();
+                                                if (urlScorePull.ToUpper().Contains("NFL"))
                                                 {
-                                                    objProcessSignalR.SendSignalRFeedtohub(msgScore, "NFL");
+                                                    if (!String.IsNullOrEmpty(data))
+                                                    {
+                                                        if (!data.Contains("heartbeat"))
+                                                            msgScore = objNFL.CreateNFLScoreMessageByBoxScoreAPI(data);
+                                                    }
+                                                    if (msgScore != null)
+                                                    {
+                                                        if (msgScore.Value != null)
+                                                        {
+                                                            objProcessSignalR.SendSignalRFeedtohub(msgScore, "NFL");
+                                                        }
+                                                    }
                                                 }
+                                                else if (data.StartsWith("<root"))
+                                                {
+                                                    if (!String.IsNullOrEmpty(data))
+                                                    {
+                                                        if (urlScorePull.ToUpper().Contains("TENNIS"))
+                                                        {
+                                                            msgScore = CreateTennisScoreMessage(data);
+                                                            if (msgScore != null)
+                                                                if (msgScore.Value != null)
+                                                                    objProcessSignalR.SendSignalRFeedtohub(msgScore, "Tennis");
+                                                        }
+                                                        else if (urlScorePull.ToUpper().Contains("SOCCER"))
+                                                        {
+                                                            msgScore = CreateSoccerScoreMessage(data);
+                                                            if (msgScore != null)
+                                                                if (msgScore.Value != null)
+                                                                    objProcessSignalR.SendSignalRFeedtohub(msgScore, "Soccer");
+                                                        }
+                                                    }
+                                                }
+
+
+
                                             }
                                         }
-                                        else if (data.StartsWith("<root"))
-                                        {
-                                            if (!String.IsNullOrEmpty(data))
-                                            {
-                                                if (urlScorePull.ToUpper().Contains("TENNIS"))
-                                                {
-                                                    msgScore = CreateTennisScoreMessage(data);
-                                                    if (msgScore != null)
-                                                        if (msgScore.Value != null)
-                                                        objProcessSignalR.SendSignalRFeedtohub(msgScore,"Tennis");
-                                                }
-                                                else if (urlScorePull.ToUpper().Contains("SOCCER"))
-                                                {
-                                                    msgScore = CreateGamesScoreMessage(data);
-                                                    if (msgScore != null)
-                                                        if (msgScore.Value != null)
-                                                        objProcessSignalR.SendSignalRFeedtohub(msgScore,"Soccer");
-                                                }
-                                            }
-                                        }
-
-
-
-                                    }
+                                }
+                                catch (WebException we)
+                                {
+                                    Console.WriteLine($"{we.GetType().Name} thrown when converting BR scores: {we.Message}");
+                                    logger.Error(we, $"{we.GetType().Name} thrown when converting BR scores: {we.Message + we.StackTrace}");
                                 }
                             };
                             await client.OpenReadTaskAsync(urlScorePull);
@@ -172,11 +181,10 @@ namespace BroadcastScores
                 logger.Error(ex, $"{ex.GetType().Name} thrown when converting BR scores: {ex.Message +  ex.StackTrace}");
             }
 
-            //GenerateCollegeScoresFiles();
+            
         }
 
-        //Other Games than Tennis
-        public EventMessage CreateGamesScoreMessage(string XMLScorefeed)
+        public EventMessage CreateSoccerScoreMessage(string XMLScorefeed)
         {
             try
             {

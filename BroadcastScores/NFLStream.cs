@@ -369,28 +369,7 @@ namespace BroadcastScores
 
     }
 
-    /*
-    public class NFLStreamGameScoreHistory
-    {
-        public int eventID { get; set; }
-        public int q1home { get; set; }
-        public int q1away { get; set; }
-        public int q2home { get; set; }
-        public int q2away { get; set; }
-        public int q3home { get; set; }
-        public int q3away { get; set; }
-        public int q4home { get; set; }
-        public int q4away { get; set; }
-        public int q5home { get; set; }
-        public int q5away { get; set; }
-        public int q6home { get; set; }
-        public int q6away { get; set; }
-        public int q7home { get; set; }
-        public int q7away { get; set; }
-        public DateTime createdDate { get; set; }
-    }
-    */
-
+ 
     public class NFLGame
     {
         public string id { get; set; }
