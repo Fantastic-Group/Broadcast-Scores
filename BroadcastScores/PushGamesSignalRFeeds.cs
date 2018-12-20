@@ -103,6 +103,8 @@ namespace BroadcastScores
                         try
                         {
                             var client = new WebClient();
+                            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls | SecurityProtocolType.Tls11 | SecurityProtocolType.Tls12;
+                            ServicePointManager.Expect100Continue = false;
                             client.OpenReadCompleted += (sender, args) =>
                             {
                                 try
@@ -111,7 +113,7 @@ namespace BroadcastScores
                                     if (args.Error == null)
                                         using (var reader = new StreamReader(args.Result))
                                         {
-                                            reader.BaseStream.ReadTimeout = 10000;
+                                            reader.BaseStream.ReadTimeout = 6000;
                                             while (!reader.EndOfStream)
                                             {
                                                 string data = reader.ReadLine().Trim();
@@ -162,8 +164,23 @@ namespace BroadcastScores
                                     Console.WriteLine($"{we.GetType().Name} thrown when converting BR scores: {we.Message}");
                                     logger.Error(we, $"{we.GetType().Name} thrown when converting BR scores: {we.Message + we.StackTrace}");
                                 }
+                                catch (IOException ioe)
+                                {
+                                    Console.WriteLine($"{ioe.GetType().Name} IO Stream read error thrown when converting BR scores: {ioe.Message}");
+                                    logger.Error(ioe, $"{ioe.GetType().Name} IO Stream read error thrown thrown when converting BR scores: {ioe.Message + ioe.StackTrace}");
+                                }
                             };
                             await client.OpenReadTaskAsync(urlScorePull);
+                        }
+                        catch (WebException we)
+                        {
+                            Console.WriteLine($"{we.GetType().Name} Webclient feeds pulling : {we.Message}");
+                            logger.Error(we, $"{we.GetType().Name}  Webclient feeds pulling : {we.Message + we.StackTrace}");
+                        }
+                        catch (IOException ioe)
+                        {
+                            Console.WriteLine($"{ioe.GetType().Name} Webclient feeds pulling : {ioe.Message}");
+                            logger.Error(ioe, $"{ioe.GetType().Name} Webclient feeds pulling : {ioe.Message + ioe.StackTrace}");
                         }
                         catch (Exception e)
                         {
@@ -178,10 +195,10 @@ namespace BroadcastScores
             catch (Exception ex)
             {
                 Console.WriteLine($"{ex.GetType().Name} thrown when converting BR scores: {ex.Message}");
-                logger.Error(ex, $"{ex.GetType().Name} thrown when converting BR scores: {ex.Message +  ex.StackTrace}");
+                logger.Error(ex, $"{ex.GetType().Name} thrown when converting BR scores: {ex.Message + ex.StackTrace}");
             }
 
-            
+
         }
 
         public EventMessage CreateSoccerScoreMessage(string XMLScorefeed)
@@ -284,7 +301,7 @@ namespace BroadcastScores
             catch (Exception ex)
             {
                 Console.WriteLine($"{ex.GetType().Name} thrown when creating Soccer Gamefeed object: {ex.Message}");
-                logger.Error(ex, $"{ex.GetType().Name} thrown when creating Soccer Gamefeed object: {ex.Message +  ex.StackTrace}");
+                logger.Error(ex, $"{ex.GetType().Name} thrown when creating Soccer Gamefeed object: {ex.Message + ex.StackTrace}");
             }
             return null;
         }
@@ -364,7 +381,7 @@ namespace BroadcastScores
             catch (Exception ex)
             {
                 Console.WriteLine($"{ex.GetType().Name} thrown when creating Tennis Gamefeed object: {ex.Message}");
-                logger.Error(ex, $"{ex.GetType().Name} thrown when creating Tennis Gamefeed object: {ex.Message +  ex.StackTrace}");
+                logger.Error(ex, $"{ex.GetType().Name} thrown when creating Tennis Gamefeed object: {ex.Message + ex.StackTrace}");
             }
             return null;
         }

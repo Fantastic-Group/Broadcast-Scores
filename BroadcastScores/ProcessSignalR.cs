@@ -71,10 +71,12 @@ namespace BroadcastScores
 
                 if(counterMessageToSignalR > 20)
                 {
+                    Console.WriteLine("Stopping SignalR Connection to " + connection.Url);
                     counterMessageToSignalR = 0;
-                    connection.Stop();
+                    connection.Stop(new TimeSpan(1000));
+                    Console.WriteLine("SignalR Connecting to " + connection.Url);
                     connection.Start().Wait();
-                    Console.WriteLine("Connecting to " + connection.Url);
+                    
                 }
                     if (connection.State.ToString().ToUpper() == "DISCONNECTED")
                     {
