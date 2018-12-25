@@ -60,11 +60,14 @@ namespace BroadcastScores
 
         public async Task BuildGlobalIceHockeyScores()
         {
+            objProcessSignalR.LogHelpDebug("BuildGlobalIceHockeyScores");
+            await Task.Factory.StartNew(() => System.Threading.Thread.Sleep(2000));
             while (true)
             {
+                objProcessSignalR.LogHelpDebug("New Iteration BuildGlobalIceHockeyScores");
                 try
                 {
-                    await Task.Factory.StartNew(() => System.Threading.Thread.Sleep(2000));
+                    
                     GetLiveGames();
 
                     if (liveGames.Count > 0)
@@ -91,6 +94,7 @@ namespace BroadcastScores
         // Get live games
         public void GetLiveGames()
         {
+            objProcessSignalR.LogHelpDebug("GlobalIceHockey GetLiveGames");
             try
             {
                 liveGames.Clear();
@@ -169,6 +173,7 @@ namespace BroadcastScores
 
         public async Task FetchAndSendScores()
         {
+            objProcessSignalR.LogHelpDebug("GlobalIceHockey FetchAndSendScores");
             foreach (GlobalIceHockeyGame gameDetails in liveGames)
             {
                 String currentGameURL = GlobalIceHockeyScoreAPI;
@@ -207,6 +212,7 @@ namespace BroadcastScores
 
         public EventMessage CreateGlobalIceHockeyScoreMessage(string XMLScorefeed, string eventID)
         {
+            objProcessSignalR.LogHelpDebug("CreateGlobalIceHockeyScoreMessage");
             try
             {
                 XmlDocument doc = new XmlDocument();

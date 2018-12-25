@@ -255,7 +255,7 @@ namespace BroadcastScores
 
                 // Got those EventIDs yet?
                 if (!matchEventsTask.IsCompleted)
-                    matchEventsTask.Wait();
+                    matchEventsTask.Wait(new TimeSpan(5000));
 
                 if (matchEventsTask.Result != null && matchEventsTask.Result.ContainsKey(Convert.ToInt32(matchID)))
                 {
@@ -360,8 +360,8 @@ namespace BroadcastScores
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"{ex.GetType().Name} thrown when creating Gamefeed object: {ex.Message}");
-                logger.Error(ex, $"{ex.GetType().Name} thrown when creating Gamefeed object: {ex.Message + ex.StackTrace}");
+                Console.WriteLine($"{ex.GetType().Name} thrown when creating NFL Gamefeed object: {ex.Message}");
+                logger.Error(ex, $"{ex.GetType().Name} thrown when creating NFL Gamefeed object: {ex.Message + ex.StackTrace}");
             }
             return null;
         }

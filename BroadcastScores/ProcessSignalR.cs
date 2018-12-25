@@ -51,7 +51,7 @@ namespace BroadcastScores
                 connection.ConnectionSlow += Connection_ConnectionSlow;
                 connection.Closed += Connection_Closed;
                 proxy = connection.CreateHubProxy(hub);
-                connection.Start().Wait();
+                connection.Start().Wait(new TimeSpan(5000));
 
                 Console.WriteLine("SignalR Connection created for " +hubConnectionURL);
             }
@@ -75,13 +75,13 @@ namespace BroadcastScores
                     counterMessageToSignalR = 0;
                     connection.Stop(new TimeSpan(1000));
                     Console.WriteLine("SignalR Connecting to " + connection.Url);
-                    connection.Start().Wait();
+                    connection.Start().Wait(new TimeSpan(5000));
                     
                 }
                     if (connection.State.ToString().ToUpper() == "DISCONNECTED")
                     {
                         Console.WriteLine("Reconnecting to " + connection.Url);
-                        connection.Start().Wait();
+                        connection.Start().Wait(new TimeSpan(5000));
                         //Some times proxy is not getting enabled so it throws error : connection was disconnected before invocation result was received
                         // To avoid error added below wait
                         System.Threading.Thread.Sleep(3000);
@@ -95,15 +95,19 @@ namespace BroadcastScores
                         ((Miomni.Gaming.Relay.Responses.EventStatusResponse)msg.Value).Score.OrdinalPeriod = 0; 
                     }
 
-                    var task = proxy.Invoke(method, authHash, msg.Value);
-                    task.Wait();
+                    if (connection.State.ToString().ToUpper() == "CONNECTED")
+                    {
+                        var task = proxy.Invoke(method, authHash, msg.Value);
+                        task.Wait(new TimeSpan(5000));
 
-                    Console.WriteLine("Message Sent for " + eventID + " with Status:'" + currentPeriod + "' for " + Sport + " to " + connection.Url);
+                        Console.WriteLine(DateTime.Now.ToString("HH:mm:ss") + " : Message Sent for " + eventID + " with Status:'" + currentPeriod + "' for " + Sport + " to " + connection.Url);
+                        logger.Info("Message Sent for " + eventID + " with Status:'" + currentPeriod + "' for " + Sport + " to " + connection.Url);
+                }
 
                     //This logic is only for blocking markets as sometimes EG games are active even after the game finished 
                     if(currentPeriod.ToUpper() == "ENDED")
                     {
-                        BlockMarketsAfterGameEnds(eventID, Sport).Wait();
+                        BlockMarketsAfterGameEnds(eventID, Sport).Wait(new TimeSpan(10000));
                     }
 
                 objFeedsToDisk.WritefeedToDisk(msg);
@@ -187,15 +191,16 @@ namespace BroadcastScores
                     if (connection.State.ToString().ToUpper() == "DISCONNECTED")
                     {
                         Console.WriteLine("Reconnecting to " + connection.Url);
-                        connection.Start().Wait();
+                        connection.Start().Wait(new TimeSpan(5000));
                         //Some times proxy is not getting enabled so it throws error : connection was disconnected before invocation result was received
                         // To avoid error added below wait
                         System.Threading.Thread.Sleep(3000);
                     }
 
                     var task = proxy.Invoke(method, authHash, eventMessage.Value);
-                    task.Wait();
-                    Console.WriteLine("Message Sent for " + eventID + " for blocking Markets as Game Ended for " + sport + " to " + connection.Url);
+                    task.Wait(new TimeSpan(5000));
+                    Console.WriteLine(DateTime.Now.ToString("HH:mm:ss") + " Message Sent for " + eventID + " for blocking Markets as Game Ended for " + sport + " to " + connection.Url);
+                    logger.Info("Message Sent for " + eventID + " for blocking Markets as Game Ended for " + sport + " to " + connection.Url);
             }
             catch(Exception ex)
             {
@@ -204,6 +209,10 @@ namespace BroadcastScores
             }
         }
 
-
+        public void LogHelpDebug(string funtionName)
+        {
+            Console.WriteLine(DateTime.Now.ToString("HH:mm:ss") + " : Started - " + funtionName);
+            logger.Info("Started - " + funtionName);
+        }
     }
 }

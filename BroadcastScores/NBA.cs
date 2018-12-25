@@ -68,11 +68,14 @@ namespace BroadcastScores
 
         public async Task BuildNBAScores()
         {
+            objProcessSignalR.LogHelpDebug("BuildNBAScores");
+            await Task.Factory.StartNew(() => System.Threading.Thread.Sleep(2000));
             while (true)
             {
                 try
                 {
-                    await Task.Factory.StartNew(() => System.Threading.Thread.Sleep(2000));
+                    objProcessSignalR.LogHelpDebug("New Iteration BuildNBAScores");
+                    
                     GetLiveGames();
 
                     if (liveGames.Count > 0)
@@ -99,6 +102,7 @@ namespace BroadcastScores
         // Get live games
         public void GetLiveGames()
         {
+            objProcessSignalR.LogHelpDebug("NBA GetLiveGames");
             try
             {
                 liveGames.Clear();
@@ -184,6 +188,7 @@ namespace BroadcastScores
 
         public async Task FetchAndSendScores()
         {
+            objProcessSignalR.LogHelpDebug("NBA FetchAndSendScores");
             foreach (NBAGame gameDetails in liveGames)
             {
                 String currentGameURL = NBAScoreAPI;
@@ -222,6 +227,7 @@ namespace BroadcastScores
 
         public EventMessage CreateNBAScoreMessage(string XMLScorefeed, string eventID)
         {
+            objProcessSignalR.LogHelpDebug("CreateNBAScoreMessage");
             try
             {
                 XmlDocument doc = new XmlDocument();

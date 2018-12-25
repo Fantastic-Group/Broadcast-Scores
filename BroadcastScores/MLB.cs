@@ -59,12 +59,13 @@ namespace BroadcastScores
 
         public async Task BuildMLBScores()
         {
+            await Task.Factory.StartNew(() => System.Threading.Thread.Sleep(2000));
             while (true)
             {
                 try
                 {
-                    await Task.Factory.StartNew(() => System.Threading.Thread.Sleep(2000));
-                    await GetLiveGames();
+                    
+                    GetLiveGames();
 
                     if (liveGames.Count > 0)
                     {
@@ -88,7 +89,7 @@ namespace BroadcastScores
         }
 
         // Get live games
-        public async Task GetLiveGames()
+        public void GetLiveGames()
         {
             try
             {

@@ -65,6 +65,7 @@ namespace BroadcastScores
         {
             try
             {
+                objProcessSignalR.LogHelpDebug("GenerateScoresFeeds");
                 //For NCAAF API
                 if (urlScorePull.ToUpper().Contains("NCAAF"))
                 {
@@ -90,6 +91,7 @@ namespace BroadcastScores
                 {
                     GlobalBasketBall objGlobalBasketBall = new GlobalBasketBall(urlScorePull, objProcessSignalR);
                     await objGlobalBasketBall.BuildGlobalBasketBallScores();
+                    objProcessSignalR.LogHelpDebug("Ended Basketball Execution");
                 }
                 else if (urlScorePull.ToUpper().Contains("NCAAMB"))
                 {
@@ -102,6 +104,7 @@ namespace BroadcastScores
                     {
                         try
                         {
+                            objProcessSignalR.LogHelpDebug("GenerateScoresFeeds : New PushfeedIteration");
                             var client = new WebClient();
                             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls | SecurityProtocolType.Tls11 | SecurityProtocolType.Tls12;
                             ServicePointManager.Expect100Continue = false;
@@ -113,7 +116,7 @@ namespace BroadcastScores
                                     if (args.Error == null)
                                         using (var reader = new StreamReader(args.Result))
                                         {
-                                            reader.BaseStream.ReadTimeout = 6000;
+                                            reader.BaseStream.ReadTimeout = 10000;
                                             while (!reader.EndOfStream)
                                             {
                                                 string data = reader.ReadLine().Trim();
@@ -205,6 +208,7 @@ namespace BroadcastScores
         {
             try
             {
+                objProcessSignalR.LogHelpDebug("CreateSoccerScoreMessage");
                 XmlDocument doc = new XmlDocument();
                 doc.InnerXml = XMLScorefeed;
 
@@ -222,7 +226,7 @@ namespace BroadcastScores
 
                 // Got those EventIDs yet?
                 if (!matchEventsTask.IsCompleted)
-                    matchEventsTask.Wait();
+                    matchEventsTask.Wait(new TimeSpan(5000));
 
                 if (matchEventsTask.Result != null && matchEventsTask.Result.ContainsKey(Convert.ToInt32(matchID)))
                 {
@@ -310,6 +314,7 @@ namespace BroadcastScores
         {
             try
             {
+                objProcessSignalR.LogHelpDebug("CreateTennisScoreMessage");
                 XmlDocument doc = new XmlDocument();
                 doc.InnerXml = XMLScorefeed;
 
@@ -321,7 +326,7 @@ namespace BroadcastScores
 
                 // Got those EventIDs yet?
                 if (!matchEventsTask.IsCompleted)
-                    matchEventsTask.Wait();
+                    matchEventsTask.Wait(new TimeSpan(5000));
 
                 if (matchEventsTask.Result != null && matchEventsTask.Result.ContainsKey(Convert.ToInt32(matchID)))
                 {

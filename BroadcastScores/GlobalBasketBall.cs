@@ -62,11 +62,14 @@ namespace BroadcastScores
 
         public async Task BuildGlobalBasketBallScores()
         {
+            objProcessSignalR.LogHelpDebug("BuildGlobalBasketBallScores");
+            await Task.Factory.StartNew(() => System.Threading.Thread.Sleep(2000));
             while (true)
             {
+                objProcessSignalR.LogHelpDebug("New Iteration BuildGlobalBasketBallScores");
                 try
                 {
-                    await Task.Factory.StartNew(() => System.Threading.Thread.Sleep(2000));
+
                     GetLiveGames();
 
                     if (liveGames.Count > 0)
@@ -79,6 +82,7 @@ namespace BroadcastScores
                     Console.WriteLine($"{ex.GetType().Name} thrown when fetching and creating GlobalBasketBall Score object: {ex.Message}");
                 }
                 
+                
 
                 if(liveGames.Count > 0) //if any game is live Api calling cycle interval will be less otherwise more to avoid frequent polling
                 {
@@ -88,12 +92,14 @@ namespace BroadcastScores
                 {
                     System.Threading.Thread.Sleep(Convert.ToInt32(APICallingCycleIntervalIfGameNotLive));
                 }
+                
             }
         }
 
         // Get live games
         public void GetLiveGames()
         {
+            objProcessSignalR.LogHelpDebug("GlobalBasketBall GetLiveGames");
             try
             {
                 liveGames.Clear();
@@ -168,11 +174,13 @@ namespace BroadcastScores
                 Console.WriteLine($"{ex.GetType().Name} thrown when getting todays GlobalBasketBall Games : {ex.Message}");
                 logger.Error(ex, $"{ex.GetType().Name} thrown when getting todays GlobalBasketBall Games : {ex.Message + ex.StackTrace}");
             }
+            
         }
 
 
         public async Task FetchAndSendScores()
         {
+            objProcessSignalR.LogHelpDebug("GlobalBasketBall FetchAndSendScores");
             foreach (GlobalBasketBallGame gameDetails in liveGames)
             {
                 String currentGameURL = GlobalBasketBallScoreAPI;
@@ -185,9 +193,12 @@ namespace BroadcastScores
                     string[] matchIDs = { matchID };
                     var matchEventsTask = new EGSqlQuery(SqlUrl).MatchIDsToEventAsync(matchIDs);
 
+                    
                     // Got those EventIDs yet?
                     if (!matchEventsTask.IsCompleted)
                         await matchEventsTask;
+
+                    
 
                     if (matchEventsTask.Result != null && matchEventsTask.Result.ContainsKey(Convert.ToInt32(matchID)))
                     {
@@ -206,12 +217,13 @@ namespace BroadcastScores
                     logger.Error(ex, $"{ex.GetType().Name} - GlobalBasketBall Score feed pulling from API : {ex.Message + ex.StackTrace}");
                 }
             }
-
+            
         }
 
 
         public EventMessage CreateGlobalBasketBallScoreMessage(string XMLScorefeed, string eventID)
         {
+            objProcessSignalR.LogHelpDebug("CreateGlobalBasketBallScoreMessage");
             try
             {
                 XmlDocument doc = new XmlDocument();
