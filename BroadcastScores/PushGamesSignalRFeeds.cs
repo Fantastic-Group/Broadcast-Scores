@@ -65,7 +65,6 @@ namespace BroadcastScores
         {
             try
             {
-                objProcessSignalR.LogHelpDebug("GenerateScoresFeeds");
                 //For NCAAF API
                 if (urlScorePull.ToUpper().Contains("NCAAF"))
                 {
@@ -91,7 +90,6 @@ namespace BroadcastScores
                 {
                     GlobalBasketBall objGlobalBasketBall = new GlobalBasketBall(urlScorePull, objProcessSignalR);
                     await objGlobalBasketBall.BuildGlobalBasketBallScores();
-                    objProcessSignalR.LogHelpDebug("Ended Basketball Execution");
                 }
                 else if (urlScorePull.ToUpper().Contains("NCAAMB"))
                 {
@@ -208,7 +206,6 @@ namespace BroadcastScores
         {
             try
             {
-                objProcessSignalR.LogHelpDebug("CreateSoccerScoreMessage");
                 XmlDocument doc = new XmlDocument();
                 doc.InnerXml = XMLScorefeed;
 
@@ -314,7 +311,6 @@ namespace BroadcastScores
         {
             try
             {
-                objProcessSignalR.LogHelpDebug("CreateTennisScoreMessage");
                 XmlDocument doc = new XmlDocument();
                 doc.InnerXml = XMLScorefeed;
 

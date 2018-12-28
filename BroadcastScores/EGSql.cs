@@ -30,7 +30,8 @@ namespace BroadcastScores
                     away = away.Substring(0, away.IndexOf(" "));
 
                 DateTime convertedGameDate = ConverToEasternStandardTime(gameDate);
-                string finalDate = convertedGameDate.ToString("yyyy-MM-ddTHH:mm:ss");
+                //string finalDate = convertedGameDate.ToString("yyyy-MM-ddTHH:mm:ss");
+                string finalDate = convertedGameDate.ToString("yyyy-MM-dd");
 
                 var rows = await query
                             .WithTable("bet_events be")
@@ -46,7 +47,7 @@ namespace BroadcastScores
                             //.AndWhere($"tth.TEAM_NAME like '%{home}%' AND tth.TEAM_NAME like '{home}%'")
                             //.AndWhere($"tta.TEAM_NAME like '%{away}%' AND tta.TEAM_NAME like '{away}%'")
                             //.AndWhere($"SCD_DATE = '{finalDate}' ")
-                            .AndWhere($"ACTUAL_DATE = '{finalDate}' ")
+                            .AndWhere($"ACTUAL_DATE like '{finalDate}%' ")
                             .ExecAsync<EventDetails[]>();
                 
                 if (rows is null)

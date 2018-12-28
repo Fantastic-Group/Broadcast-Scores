@@ -59,7 +59,6 @@ namespace BroadcastScores
 
         public async Task BuildNCAAMBScores()
         {
-            objProcessSignalR.LogHelpDebug("BuildNCAAMBScores");
             await Task.Factory.StartNew(() => System.Threading.Thread.Sleep(2000));
             while (true)
             {
@@ -93,7 +92,6 @@ namespace BroadcastScores
         // Get live games
         public void GetLiveGames()
         {
-            objProcessSignalR.LogHelpDebug("NCAAMB GetLiveGames");
             try
             {
                 liveGames.Clear();
@@ -183,7 +181,6 @@ namespace BroadcastScores
 
         public async Task FetchAndSendScores()
         {
-            objProcessSignalR.LogHelpDebug("NCAAMB FetchAndSendScores");
             foreach (NCAAMBGame gameDetails in liveGames)
             {
                 String currentGameURL = NCAAMBScoreAPI;
@@ -231,7 +228,6 @@ namespace BroadcastScores
 
         public EventMessage CreateNCAAMBScoreMessage(string XMLScorefeed, string eventID)
         {
-            objProcessSignalR.LogHelpDebug("CreateNCAAMBScoreMessage");
             try
             {
                 XmlDocument doc = new XmlDocument();

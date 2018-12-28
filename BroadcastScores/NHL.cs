@@ -59,7 +59,6 @@ namespace BroadcastScores
 
         public async Task BuildNHLScores()
         {
-            objProcessSignalR.LogHelpDebug("BuildNHLScores");
             await Task.Factory.StartNew(() => System.Threading.Thread.Sleep(2000));
             while (true)
             {
@@ -93,7 +92,6 @@ namespace BroadcastScores
         // Get live games
         public void GetLiveGames()
         {
-            objProcessSignalR.LogHelpDebug("NHL GetLiveGames");
             try
             {
                 liveGames.Clear();
@@ -179,7 +177,6 @@ namespace BroadcastScores
 
         public async Task FetchAndSendScores()
         {
-            objProcessSignalR.LogHelpDebug("NHL FetchAndSendScores");
             foreach (NHLGame gameDetails in liveGames)
             {
                 String currentGameURL = NHLScoreAPI;
@@ -218,7 +215,6 @@ namespace BroadcastScores
 
         public EventMessage CreateNHLScoreMessage(string XMLScorefeed, string eventID)
         {
-            objProcessSignalR.LogHelpDebug("CreateNHLScoreMessage");
             try
             {
                 XmlDocument doc = new XmlDocument();

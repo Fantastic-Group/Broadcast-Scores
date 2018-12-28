@@ -62,7 +62,6 @@ namespace BroadcastScores
 
         public async Task BuildGlobalBasketBallScores()
         {
-            objProcessSignalR.LogHelpDebug("BuildGlobalBasketBallScores");
             await Task.Factory.StartNew(() => System.Threading.Thread.Sleep(2000));
             while (true)
             {
@@ -99,7 +98,6 @@ namespace BroadcastScores
         // Get live games
         public void GetLiveGames()
         {
-            objProcessSignalR.LogHelpDebug("GlobalBasketBall GetLiveGames");
             try
             {
                 liveGames.Clear();
@@ -180,7 +178,6 @@ namespace BroadcastScores
 
         public async Task FetchAndSendScores()
         {
-            objProcessSignalR.LogHelpDebug("GlobalBasketBall FetchAndSendScores");
             foreach (GlobalBasketBallGame gameDetails in liveGames)
             {
                 String currentGameURL = GlobalBasketBallScoreAPI;
@@ -223,7 +220,6 @@ namespace BroadcastScores
 
         public EventMessage CreateGlobalBasketBallScoreMessage(string XMLScorefeed, string eventID)
         {
-            objProcessSignalR.LogHelpDebug("CreateGlobalBasketBallScoreMessage");
             try
             {
                 XmlDocument doc = new XmlDocument();

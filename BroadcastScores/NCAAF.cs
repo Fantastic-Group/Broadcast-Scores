@@ -80,7 +80,6 @@ namespace BroadcastScores
 
         public async Task BuildNCAAFScores()
         {
-            objProcessSignalR.LogHelpDebug("BuildNCAAFScores");
             await Task.Factory.StartNew(() => System.Threading.Thread.Sleep(2000));
             while (true)
             {
@@ -147,7 +146,6 @@ namespace BroadcastScores
 
         public async Task FetchAndSendScores()
         {
-            objProcessSignalR.LogHelpDebug("NCAAF FetchAndSendScores");
             foreach (NCAAFGame gameDetails in liveGames)
             {
                 String currentGameURL = NCAAFBScoreAPI;
@@ -187,7 +185,6 @@ namespace BroadcastScores
 
         public EventMessage CreateCollegeFootballScoreMessage(string XMLScorefeed, string eventID)
         {
-            objProcessSignalR.LogHelpDebug("CreateCollegeFootballScoreMessage");
             try
             {
                 XmlDocument doc = new XmlDocument();
@@ -341,7 +338,6 @@ namespace BroadcastScores
 
         public void GetLiveGames()
         {
-            objProcessSignalR.LogHelpDebug("NCAAF GetLiveGames");
             try
             {
                 liveGames.Clear();
@@ -407,7 +403,6 @@ namespace BroadcastScores
 
         public void GenerateNCAAFTeamNamesLookup()
         {
-            objProcessSignalR.LogHelpDebug("GenerateNCAAFTeamNamesLookup");
             try
             {
                 TeamNameList.Clear();

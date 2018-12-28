@@ -27,7 +27,7 @@ namespace BroadcastScores
         static ScoreFeedsToDisk objFeedsToDisk = new ScoreFeedsToDisk();
         HubConnection connection;
         IHubProxy proxy;
-        int counterMessageToSignalR = 0;
+        //int counterMessageToSignalR = 0;
 
         public ProcessSignalR()
         {
@@ -69,15 +69,15 @@ namespace BroadcastScores
                 string serialised = JsonConvert.SerializeObject(msg.Value);
                 string authHash = $"{serialised}{salt}".ToSHA256();
 
-                if(counterMessageToSignalR > 20)
-                {
-                    Console.WriteLine("Stopping SignalR Connection to " + connection.Url);
-                    counterMessageToSignalR = 0;
-                    connection.Stop(new TimeSpan(1000));
-                    Console.WriteLine("SignalR Connecting to " + connection.Url);
-                    connection.Start().Wait(new TimeSpan(5000));
+                //if(counterMessageToSignalR > 20)
+                //{
+                //    Console.WriteLine("Stopping SignalR Connection to " + connection.Url);
+                //    counterMessageToSignalR = 0;
+                //    connection.Stop(new TimeSpan(1000));
+                //    Console.WriteLine("SignalR Connecting to " + connection.Url);
+                //    connection.Start().Wait(new TimeSpan(5000));
                     
-                }
+                //}
                     if (connection.State.ToString().ToUpper() == "DISCONNECTED")
                     {
                         Console.WriteLine("Reconnecting to " + connection.Url);
@@ -111,7 +111,7 @@ namespace BroadcastScores
                     }
 
                 objFeedsToDisk.WritefeedToDisk(msg);
-                counterMessageToSignalR++;
+                //counterMessageToSignalR++;
                 
             }
             catch (Exception ex)

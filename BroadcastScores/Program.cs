@@ -17,10 +17,14 @@ using EnterGamingRelay.APIModel;
 using EnterGamingRelay.EventModules;
 using EnterGamingRelay;
 
+using System.ServiceProcess;
+using System.Configuration.Install;
+using System.Reflection;
+
 
 namespace BroadcastScores
 {
-    class Program
+    class Program : ServiceBase
     {
 
         public static string SqlUrl { get; set; }
@@ -32,18 +36,42 @@ namespace BroadcastScores
         {
             try
             {
-                ProcessGameScores().Wait();
+                Program service = new Program();
+
+                if (Environment.UserInteractive)
+                {
+                    string parameter = string.Concat(args);
+                    switch (parameter)
+                    {
+                        // Install/Uninstall myself as a Windows Service
+                        // Make sure you run EventService.exe as Administrator from the command line
+                        case "--install":
+                            ManagedInstallerClass.InstallHelper(new[] { Assembly.GetExecutingAssembly().Location });
+                            break;
+                        case "--uninstall":
+                            ManagedInstallerClass.InstallHelper(new[] { "/u", Assembly.GetExecutingAssembly().Location });
+                            break;
+                        default:
+                            service.OnStart(args);
+
+                            Console.WriteLine("Press any key to stop.");
+                            Console.Read();
+
+                            service.OnStop();
+                            break;
+                    }
+                }
+                else
+                    ServiceBase.Run(service);
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Console.WriteLine($" Exception in Main : { ex.Message + ex.StackTrace}");
                 logger.Error(ex, $"{ex.GetType().Name}  Exception in Main : {ex.Message + ex.StackTrace}");
             }
-            Console.WriteLine("Main finished");
-            logger.Info("Main finished");
         }
 
-        private static async Task ProcessGameScores()
+        private void ProcessGameScores()
         {
             try
             {
@@ -63,18 +91,52 @@ namespace BroadcastScores
                     tasks.Add(pushObj.GenerateScoresFeeds(pullUrl.Trim()));
                     i++;
                 }
-                await Task.WhenAll(tasks);
-                Console.WriteLine("All tasks finished");
-                logger.Info("All tasks finished");
+                Task.WhenAll(tasks);
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Console.WriteLine($"thrown when running ProcessGameScores: { ex.Message + ex.StackTrace}");
-                logger.Error(ex, $"{ex.GetType().Name} thrown when running ProcessGameScores : {ex.Message +  ex.StackTrace}");
+                logger.Error(ex, $"{ex.GetType().Name} thrown when running ProcessGameScores : {ex.Message + ex.StackTrace}");
             }
-            Console.WriteLine("ProcessGameScores finished");
-            logger.Info("ProcessGameScores finished");
         }
+
+        public Program()
+        {
+            InitializeComponent();
+        }
+
+        protected override void OnStart(string[] args)
+        {
+            Console.WriteLine("Service starting");
+            logger.Info("Service starting");
+            try
+            {
+                ProcessGameScores();
+            }
+            catch (Exception ex)
+            {
+                logger.Fatal($"{ex.GetType().Name} thrown when loading profile: {ex.Message}");
+                throw;
+            }
+        }
+
+        protected override void OnStop()
+        {
+            Console.WriteLine("Service stopped");
+            logger.Info("Service stopped");
+        }
+
+        private void InitializeComponent()
+        {
+            // 
+            // EventServiceHost
+            // 
+            this.ServiceName = "BroadcastScoresService";
+
+        }
+
+
+
 
     }
 }
