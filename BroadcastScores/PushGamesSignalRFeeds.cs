@@ -96,6 +96,11 @@ namespace BroadcastScores
                     NCAAMB objNCAAMB = new NCAAMB(urlScorePull, objProcessSignalR);
                     await objNCAAMB.BuildNCAAMBScores();
                 }
+                else if (urlScorePull.ToUpper().Contains("BASEBALL"))
+                {
+                    GlobalBaseball objGlobalBaseball = new GlobalBaseball(urlScorePull, objProcessSignalR);
+                    await objGlobalBaseball.BuildGlobalBaseballScores();
+                }
                 else // For all Push feeds
                 {
                     while (true)

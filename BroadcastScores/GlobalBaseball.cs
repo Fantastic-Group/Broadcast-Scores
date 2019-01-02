@@ -24,44 +24,46 @@ using EnterGamingRelay;
 
 namespace BroadcastScores
 {
-    class MLB
+    class GlobalBaseball
     {
         static Logger logger = LogManager.GetCurrentClassLogger();
         ProcessSignalR objProcessSignalR;
 
         static string SqlUrl { get; set; }
-        string MLBGamesScheduleAPI { get; set; }
-        string MLBScoreAPI { get; set; }
-        static List<MLBGame> liveGames = new List<MLBGame>();
-        static List<MLBGame> oldLiveGamesList = new List<MLBGame>();
+        string GlobalBaseballGamesScheduleAPI { get; set; }
+        string GlobalBaseballScoreAPI { get; set; }
+        static List<GlobalBaseballGame> liveGames = new List<GlobalBaseballGame>();
+        static List<GlobalBaseballGame> oldLiveGamesList = new List<GlobalBaseballGame>();
         string APICallingCycleInterval { get; set; }
         string APICallingCycleIntervalIfGameNotLive { get; set; }
 
 
-        public MLB(string strMLBScoreAPI, ProcessSignalR processSignalR)
+        public GlobalBaseball(string strGlobalBaseballScoreAPI, ProcessSignalR processSignalR)
         {
             objProcessSignalR = processSignalR;
             SqlUrl = ConfigurationManager.AppSettings["SqlUrl"];
 
-            MLBScoreAPI = strMLBScoreAPI;
-            MLBGamesScheduleAPI = ConfigurationManager.AppSettings["MLBGamesScheduleAPI"];
+            GlobalBaseballScoreAPI = strGlobalBaseballScoreAPI;
+            GlobalBaseballGamesScheduleAPI = ConfigurationManager.AppSettings["GlobalBaseballGamesScheduleAPI"];
 
             APICallingCycleInterval = ConfigurationManager.AppSettings["APICallingCycleInterval"];
             APICallingCycleIntervalIfGameNotLive = ConfigurationManager.AppSettings["APICallingCycleIntervalIfGameNotLive"];
 
-            if (String.IsNullOrWhiteSpace(strMLBScoreAPI))
-                throw new ArgumentException("MLB needs Score API URL", nameof(strMLBScoreAPI));
 
-            if (String.IsNullOrWhiteSpace(MLBGamesScheduleAPI))
-                throw new ArgumentException("MLB needs GameSchedule API URL", nameof(MLBGamesScheduleAPI));
+            if (String.IsNullOrWhiteSpace(strGlobalBaseballScoreAPI))
+                throw new ArgumentException("GlobalBaseball needs Score API URL", nameof(strGlobalBaseballScoreAPI));
+
+            if (String.IsNullOrWhiteSpace(GlobalBaseballGamesScheduleAPI))
+                throw new ArgumentException("GlobalBaseball needs GameSchedule API URL", nameof(GlobalBaseballGamesScheduleAPI));
 
         }
 
-        public async Task BuildMLBScores()
+        public async Task BuildGlobalBaseballScores()
         {
             await Task.Factory.StartNew(() => System.Threading.Thread.Sleep(2000));
             while (true)
             {
+                objProcessSignalR.LogHelpDebug("New Iteration BuildGlobalBaseballScores");
                 try
                 {
                     
@@ -74,7 +76,7 @@ namespace BroadcastScores
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"{ex.GetType().Name} thrown when fetching and creating MLB Score object: {ex.Message}");
+                    Console.WriteLine($"{ex.GetType().Name} thrown when fetching and creating GlobalBaseball Score object: {ex.Message}");
                 }
 
                 if (liveGames.Count > 0) //if any game is live Api calling cycle interval will be less otherwise more to avoid frequent polling
@@ -95,53 +97,46 @@ namespace BroadcastScores
             {
                 liveGames.Clear();
                 XmlDocument doc = new XmlDocument();
-                string gameScheduleAPI = MLBGamesScheduleAPI;
-                gameScheduleAPI = gameScheduleAPI.Replace("{year}", DateTime.UtcNow.Year.ToString());
-                gameScheduleAPI = gameScheduleAPI.Replace("{month}", DateTime.UtcNow.Month.ToString());
-                gameScheduleAPI = gameScheduleAPI.Replace("{day}", DateTime.UtcNow.Day.ToString());
+                string gameScheduleAPI = GlobalBaseballGamesScheduleAPI;
+                gameScheduleAPI = gameScheduleAPI.Replace("{date}", DateTime.UtcNow.ToString("yyyy-MM-dd"));
                 doc.Load(gameScheduleAPI);
-                XmlNode nodeGames = doc.GetElementsByTagName("games").Item(0);
+                XmlNode nodeGames = doc.GetElementsByTagName("schedule").Item(0);
 
                 if (nodeGames != null)
                     foreach (XmlNode xmlGame in nodeGames)
                     {
                         string gameStatus = xmlGame.Attributes["status"].Value;
-                        if (gameStatus.ToUpper() == "INPROGRESS")
+                        if (gameStatus.ToUpper() == "LIVE")
                         {
                             liveGames.Add(
-                                new MLBGame
+                                new GlobalBaseballGame
                                 {
-                                    GameID = xmlGame.Attributes["id"].Value,
-                                    MatchID = xmlGame.Attributes["sr_id"].Value
+                                    MatchID = xmlGame.Attributes["id"].Value
                                 });
                         }
                     }
 
-                // If game is started yesterday but still live today so fetching yesterdays games also
-                gameScheduleAPI = MLBGamesScheduleAPI;
-                gameScheduleAPI = gameScheduleAPI.Replace("{year}", DateTime.UtcNow.AddDays(-1).Year.ToString());
-                gameScheduleAPI = gameScheduleAPI.Replace("{month}", DateTime.UtcNow.AddDays(-1).Month.ToString());
-                gameScheduleAPI = gameScheduleAPI.Replace("{day}", DateTime.UtcNow.AddDays(-1).Day.ToString());
+                gameScheduleAPI = GlobalBaseballGamesScheduleAPI;
+                gameScheduleAPI = gameScheduleAPI.Replace("{date}", DateTime.UtcNow.AddDays(-1).ToString("yyyy-MM-dd"));
                 doc.Load(gameScheduleAPI);
-                nodeGames = doc.GetElementsByTagName("games").Item(0);
+                nodeGames = doc.GetElementsByTagName("schedule").Item(0);
 
                 if (nodeGames != null)
                     foreach (XmlNode xmlGame in nodeGames)
                     {
                         string gameStatus = xmlGame.Attributes["status"].Value;
-                        if (gameStatus.ToUpper() == "INPROGRESS")
+                        if (gameStatus.ToUpper() == "LIVE")
                         {
                             liveGames.Add(
-                                new MLBGame
+                                new GlobalBaseballGame
                                 {
-                                    GameID = xmlGame.Attributes["id"].Value,
-                                    MatchID = xmlGame.Attributes["sr_id"].Value
+                                    MatchID = xmlGame.Attributes["id"].Value
                                 });
                         }
                     }
 
                 //////////////////////////////////////////////////////////////////
-                List<MLBGame> tempGameslist = new List<MLBGame>();
+                List<GlobalBaseballGame> tempGameslist = new List<GlobalBaseballGame>();
                 if (oldLiveGamesList.Count > 0)
                 {
                     tempGameslist = oldLiveGamesList;
@@ -153,7 +148,7 @@ namespace BroadcastScores
                 oldLiveGamesList = liveGames;
                 if (tempGameslist.Count > 0)
                 {
-                    foreach (MLBGame game in tempGameslist)
+                    foreach (GlobalBaseballGame game in tempGameslist)
                     {
                         if (!liveGames.Contains(game))
                         {
@@ -169,21 +164,20 @@ namespace BroadcastScores
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"{ex.GetType().Name} thrown when getting todays MLB Games : {ex.Message}");
-                logger.Error(ex, $"{ex.GetType().Name} thrown when getting todays MLB Games : {ex.Message + ex.StackTrace}");
+                Console.WriteLine($"{ex.GetType().Name} thrown when getting todays GlobalBaseball Games : {ex.Message}");
+                logger.Error(ex, $"{ex.GetType().Name} thrown when getting todays GlobalBaseball Games : {ex.Message + ex.StackTrace}");
             }
         }
 
         public async Task FetchAndSendScores()
         {
-            XmlDocument doc = new XmlDocument();
-
-            foreach (MLBGame gameDetails in liveGames)
+            foreach (GlobalBaseballGame gameDetails in liveGames)
             {
-                String currentGameURL = MLBScoreAPI;
-                currentGameURL = currentGameURL.Replace("{gameID}", gameDetails.GameID);
+                String currentGameURL = GlobalBaseballScoreAPI;
+                currentGameURL = currentGameURL.Replace("{matchID}", gameDetails.MatchID);
                 try
                 {
+                    XmlDocument doc = new XmlDocument();
                     string matchID = gameDetails.MatchID;
                     matchID = matchID.Replace("sr:match:", "");
                     string[] matchIDs = { matchID };
@@ -197,23 +191,23 @@ namespace BroadcastScores
                     {
                         int eventID = matchEventsTask.Result[Convert.ToInt32(matchID)];
                         doc.Load(currentGameURL);
-                        EventMessage msg = CreateMLBScoreMessage(doc.InnerXml, eventID.ToString());
+                        EventMessage msg = CreateGlobalBaseballScoreMessage(doc.InnerXml, Convert.ToString(eventID));
                         if (msg != null)
                         {
-                            objProcessSignalR.SendSignalRFeedtohub(msg, "MLB");
+                            objProcessSignalR.SendSignalRFeedtohub(msg, "Global Hockey");
                         }
                     }
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"{ex.GetType().Name} - MLB Score feed pulling from API : {ex.Message}");
-                    logger.Error(ex, $"{ex.GetType().Name} - MLB Score feed pulling from API : {ex.Message + ex.StackTrace}");
+                    Console.WriteLine($"{ex.GetType().Name} - GlobalBaseball Score feed pulling from API : {ex.Message}");
+                    logger.Error(ex, $"{ex.GetType().Name} - GlobalBaseball Score feed pulling from API : {ex.Message + ex.StackTrace}");
                 }
             }
 
         }
 
-        public EventMessage CreateMLBScoreMessage(string XMLScorefeed, string eventID)
+        public EventMessage CreateGlobalBaseballScoreMessage(string XMLScorefeed, string eventID)
         {
             try
             {
@@ -223,47 +217,55 @@ namespace BroadcastScores
 
                 if (!String.IsNullOrEmpty(XMLScorefeed))
                 {
-                    XmlNode nodeGame = doc.GetElementsByTagName("game").Item(0);
-
-                    XmlNode homeScoreXml = doc.GetElementsByTagName("team").Item(0).FirstChild;
-                    XmlNode awayScoreXml = doc.GetElementsByTagName("team").Item(1).FirstChild;
-                    if (homeScoreXml == null || awayScoreXml == null || nodeGame == null)
-                    {
-                        return null;
-                    }
+                    XmlNode nodesport_event = doc.GetElementsByTagName("sport_event").Item(0);
+                    XmlNode nodeSportEventStatus = doc.GetElementsByTagName("sport_event_status").Item(0);
+                    XmlNode nodeperiodScores = doc.GetElementsByTagName("period_scores").Item(0);
 
                     List<Period> periodList = new List<Period>();
-                    if (homeScoreXml.HasChildNodes && awayScoreXml.HasChildNodes)
-                        for (int i = 0; i < homeScoreXml.ChildNodes.Count; i++)
+                    if(nodeperiodScores != null)
+                    if (nodeperiodScores.HasChildNodes)
+                        foreach (XmlNode x in nodeperiodScores.ChildNodes)
                         {
+                            if(x.Attributes["home_score"] != null && x.Attributes["away_score"] != null && x.Attributes["number"] != null)
                             periodList.Add(new Period
                             {
-                                Name = Convert.ToString(i + 1),
-                                Home = Convert.ToInt32(homeScoreXml.ChildNodes[i].Attributes["points"].Value),
-                                Visitor = Convert.ToInt32(awayScoreXml.ChildNodes[i].Attributes["points"].Value),
+                                Name = x.Attributes["number"].Value,
+                                Home = Convert.ToInt32(x.Attributes["home_score"].Value),
+                                Visitor = Convert.ToInt32(x.Attributes["away_score"].Value),
                             });
                         }
 
                     int home_score = 0;
                     int away_score = 0;
 
-                    if (periodList != null)
+                    if (periodList != null && nodeSportEventStatus.Attributes["home_score"] != null && nodeSportEventStatus.Attributes["away_score"] != null)
                     {
-                        home_score = Convert.ToInt32(doc.GetElementsByTagName("team").Item(0).Attributes["points"].Value);
-                        away_score = Convert.ToInt32(doc.GetElementsByTagName("team").Item(1).Attributes["points"].Value);
+                        home_score = Convert.ToInt32(nodeSportEventStatus.Attributes["home_score"].Value);
+                        away_score = Convert.ToInt32(nodeSportEventStatus.Attributes["away_score"].Value);
                     }
 
-                    string gameStatus = nodeGame.Attributes["status"].Value;
+                    string gameStatus = nodeSportEventStatus.Attributes["match_status"].Value;
+                    //gameStatus = PushGamesSignalRFeeds.CapitalizeFirstLetter(gameStatus.Replace("_", " "));
                     gameStatus = PushGamesSignalRFeeds.ToSRScoreStatus.ContainsKey(gameStatus)
                                             ? PushGamesSignalRFeeds.ToSRScoreStatus[gameStatus]
                                             : PushGamesSignalRFeeds.CapitalizeFirstLetter(gameStatus.Replace("_", " "));
-
-                    //if (gameStatus.ToUpper() == "SCHEDULED")
+                    //if(gameStatus.ToUpper() == "ENDED")
                     //{
                     //    return null;
                     //}
-                    string ordinalPeriod = nodeGame.Attributes["period"].Value;
-                    if (gameStatus.ToUpper() == "INPROGRESS")
+
+                    if (gameStatus.ToUpper() != "ENDED")
+                    {
+                        periodList.Add(new Period
+                        {
+                            Name = Convert.ToString(periodList.Count + 1),
+                            Home = home_score - periodList.Sum(x => x.Home),
+                            Visitor = away_score - periodList.Sum(x => x.Visitor),
+                        });
+                    }
+
+                    string ordinalPeriod = Convert.ToString(periodList.Count());
+                    /*if (gameStatus.ToUpper() == "INPROGRESS")
                     {
                         if (ordinalPeriod == "1")
                             gameStatus = "1st Period";
@@ -275,7 +277,7 @@ namespace BroadcastScores
                             gameStatus = "1st Overtime";
                         else if (ordinalPeriod == "5")
                             gameStatus = "Penalty Shootout";
-                    }
+                    }*/
 
 
                     var scoreMsg = new EventMessage
@@ -304,17 +306,16 @@ namespace BroadcastScores
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"{ex.GetType().Name} thrown when creating MLB Gamefeed object: {ex.Message}");
-                logger.Error(ex, $"{ex.GetType().Name} thrown when creating MLB Gamefeed object: {ex.Message + ex.StackTrace}");
+                Console.WriteLine($"{ex.GetType().Name} thrown when creating Global Ice Hockey Gamefeed object: {ex.Message}");
+                logger.Error(ex, $"{ex.GetType().Name} thrown when creating Global Ice Hockey Gamefeed object: {ex.Message + ex.StackTrace}");
             }
             return null;
         }
 
     }
 
-    class MLBGame
+    class GlobalBaseballGame
     {
-        public string GameID { get; set; }
         public string MatchID { get; set; }
     }
 
