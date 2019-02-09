@@ -194,7 +194,7 @@ namespace BroadcastScores
                         EventMessage msg = CreateGlobalBaseballScoreMessage(doc.InnerXml, Convert.ToString(eventID));
                         if (msg != null)
                         {
-                            objProcessSignalR.SendSignalRFeedtohub(msg, "Global Hockey");
+                            objProcessSignalR.SendSignalRFeedtohub(msg, "Global Baseball");
                         }
                     }
                 }
@@ -245,14 +245,10 @@ namespace BroadcastScores
                     }
 
                     string gameStatus = nodeSportEventStatus.Attributes["match_status"].Value;
-                    //gameStatus = PushGamesSignalRFeeds.CapitalizeFirstLetter(gameStatus.Replace("_", " "));
                     gameStatus = PushGamesSignalRFeeds.ToSRScoreStatus.ContainsKey(gameStatus)
                                             ? PushGamesSignalRFeeds.ToSRScoreStatus[gameStatus]
                                             : PushGamesSignalRFeeds.CapitalizeFirstLetter(gameStatus.Replace("_", " "));
-                    //if(gameStatus.ToUpper() == "ENDED")
-                    //{
-                    //    return null;
-                    //}
+
 
                     if (gameStatus.ToUpper() != "ENDED")
                     {
@@ -265,20 +261,6 @@ namespace BroadcastScores
                     }
 
                     string ordinalPeriod = Convert.ToString(periodList.Count());
-                    /*if (gameStatus.ToUpper() == "INPROGRESS")
-                    {
-                        if (ordinalPeriod == "1")
-                            gameStatus = "1st Period";
-                        else if (ordinalPeriod == "2")
-                            gameStatus = "2nd Period";
-                        else if (ordinalPeriod == "3")
-                            gameStatus = "3rd Period";
-                        else if (ordinalPeriod == "4")
-                            gameStatus = "1st Overtime";
-                        else if (ordinalPeriod == "5")
-                            gameStatus = "Penalty Shootout";
-                    }*/
-
 
                     var scoreMsg = new EventMessage
                     {
